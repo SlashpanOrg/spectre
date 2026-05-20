@@ -15,7 +15,7 @@ export interface CompletionOptions {
 }
 
 export interface ProviderConfig {
-  name: 'openai' | 'anthropic' | 'ollama'
+  name: 'openai' | 'anthropic' | 'ollama' | 'gemini'
   apiKey?: string
   baseUrl?: string
   model: string

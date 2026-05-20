@@ -96,7 +96,7 @@ Spectre MUST run entirely on user infrastructure. No cloud dependencies for core
 
 Users MUST provide their own AI API keys or configure local models. Spectre never provides AI inference.
 
-- Support OpenAI, Anthropic, Google, and other providers
+- Support OpenAI, Anthropic, Google (Gemini), and other providers
 - Support local models via Ollama, LM Studio, etc.
 - In-session wizard guides users through API key configuration
 - Multiple API keys can be configured and switched within session
@@ -108,6 +108,7 @@ Spectre MUST dynamically fetch available models from each provider's API rather 
 
 - OpenAI: `GET https://api.openai.com/v1/models` — fetch all models, filter for chat models (gpt-*)
 - Anthropic: No public model listing API exists — maintain a curated fallback list but allow custom model names
+- Google Gemini: `GET https://generativelanguage.googleapis.com/v1beta/models` — fetch all models, filter for generative models (gemini-*)
 - Ollama: `GET http://localhost:11434/api/tags` — fetch locally downloaded models
 - The `/model` command MUST display dynamically fetched model lists
 - The `/setup` wizard MUST use dynamic model lists for provider selection

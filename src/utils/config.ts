@@ -25,7 +25,7 @@ function ensureConfigDir(): void {
 }
 
 export const ProviderSchema = z.object({
-  name: z.enum(['openai', 'anthropic', 'ollama']),
+  name: z.enum(['openai', 'anthropic', 'ollama', 'gemini']),
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
   model: z.string(),

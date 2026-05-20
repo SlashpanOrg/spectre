@@ -4,7 +4,7 @@ import { discoverModels, ModelInfo } from '../ai/model-discovery.js'
 import { logger } from '../utils/logger.js'
 
 interface ProviderOption {
-  name: 'openai' | 'anthropic' | 'ollama'
+  name: 'openai' | 'anthropic' | 'ollama' | 'gemini'
   label: string
   requiresApiKey: boolean
 }
@@ -12,6 +12,7 @@ interface ProviderOption {
 const PROVIDER_OPTIONS: ProviderOption[] = [
   { name: 'openai', label: 'OpenAI', requiresApiKey: true },
   { name: 'anthropic', label: 'Anthropic', requiresApiKey: true },
+  { name: 'gemini', label: 'Google Gemini', requiresApiKey: true },
   { name: 'ollama', label: 'Ollama (Local LLM)', requiresApiKey: false },
 ]
 
@@ -87,7 +88,7 @@ export class SetupWizard {
     })
     console.log()
 
-    const answer = await this.prompt('Enter number (1-3) or name: ')
+    const answer = await this.prompt('Enter number (1-4) or name: ')
     const num = parseInt(answer, 10)
 
     if (num >= 1 && num <= PROVIDER_OPTIONS.length) {

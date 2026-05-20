@@ -2,6 +2,7 @@ import { AIProvider, ProviderConfig } from './provider.js'
 import { OpenAIProvider } from './openai.js'
 import { AnthropicProvider } from './anthropic.js'
 import { OllamaProvider } from './ollama.js'
+import { GoogleGeminiProvider } from './gemini.js'
 import { getActiveProvider, decryptKey } from '../utils/config.js'
 import { logger } from '../utils/logger.js'
 
@@ -17,6 +18,9 @@ export function createProvider(config: ProviderConfig): AIProvider {
       return new AnthropicProvider(config.apiKey, config.model)
     case 'ollama':
       return new OllamaProvider(config.baseUrl, config.model)
+    case 'gemini':
+      if (!config.apiKey) throw new Error('Google Gemini API key is required')
+      return new GoogleGeminiProvider(config.apiKey, config.model)
     default:
       throw new Error(`Unknown provider: ${(config as ProviderConfig).name}`)
   }

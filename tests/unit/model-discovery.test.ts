@@ -46,5 +46,23 @@ describe('Model Discovery', () => {
     const anthropicModels = getFallbackModels('anthropic')
     expect(anthropicModels.length).toBeGreaterThan(0)
     expect(anthropicModels[0].id).toContain('claude')
+
+    const geminiModels = getFallbackModels('gemini')
+    expect(geminiModels.length).toBeGreaterThan(0)
+    expect(geminiModels[0].id).toContain('gemini')
+  })
+
+  it('should return fallback models for Gemini without API key', async () => {
+    const result = await discoverModels('gemini')
+    expect(result.models.length).toBeGreaterThan(0)
+    expect(result.source).toBe('fallback')
+    expect(result.models[0].provider).toBe('gemini')
+    expect(result.models[0].id).toContain('gemini')
+  })
+
+  it('should cache Gemini results', async () => {
+    const result1 = await discoverModels('gemini')
+    const result2 = await discoverModels('gemini')
+    expect(result1.fetchedAt).toBe(result2.fetchedAt)
   })
 })

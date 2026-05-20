@@ -2,7 +2,7 @@ import { logger } from '../utils/logger.js'
 
 export interface ModelInfo {
   id: string
-  provider: 'openai' | 'anthropic' | 'ollama'
+  provider: 'openai' | 'anthropic' | 'ollama' | 'gemini'
   created?: number
   ownedBy?: string
   isChatModel?: boolean
@@ -29,6 +29,13 @@ const FALLBACK_MODELS: Record<string, ModelInfo[]> = {
     { id: 'claude-opus-4-20250514', provider: 'anthropic', isChatModel: true },
   ],
   ollama: [],
+  gemini: [
+    { id: 'gemini-2.0-flash', provider: 'gemini', isChatModel: true },
+    { id: 'gemini-2.0-pro', provider: 'gemini', isChatModel: true },
+    { id: 'gemini-1.5-pro', provider: 'gemini', isChatModel: true },
+    { id: 'gemini-1.5-flash', provider: 'gemini', isChatModel: true },
+    { id: 'gemini-2.0-flash-lite', provider: 'gemini', isChatModel: true },
+  ],
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -126,8 +133,60 @@ function getAnthropicModels(): ModelDiscoveryResult {
   }
 }
 
+async function fetchGeminiModels(apiKey: string): Promise<ModelDiscoveryResult> {
+  try {
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models', {
+      headers: {
+        'x-goog-api-key': apiKey,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`)
+    }
+
+    const data = (await response.json()) as {
+      models?: Array<{
+        name: string
+        displayName?: string
+        version?: string
+        inputTokenLimit?: number
+        outputTokenLimit?: number
+        supportedGenerationMethods?: string[]
+      }>
+    }
+
+    const models: ModelInfo[] = (data.models || [])
+      .filter((m) => m.supportedGenerationMethods?.includes('generateContent'))
+      .map((m) => ({
+        id: m.name.replace('models/', ''),
+        provider: 'gemini' as const,
+        isChatModel: true,
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id))
+
+    const result: ModelDiscoveryResult = {
+      models,
+      source: 'api',
+      fetchedAt: Date.now(),
+    }
+
+    logger.info(`Fetched ${models.length} Gemini models from API`)
+    return result
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    logger.warn('Failed to fetch Gemini models, using fallback:', message)
+    return {
+      models: FALLBACK_MODELS.gemini,
+      source: 'fallback',
+      fetchedAt: Date.now(),
+      error: message,
+    }
+  }
+}
+
 export async function discoverModels(
-  provider: 'openai' | 'anthropic' | 'ollama',
+  provider: 'openai' | 'anthropic' | 'ollama' | 'gemini',
   apiKey?: string,
   baseUrl?: string,
 ): Promise<ModelDiscoveryResult> {
@@ -155,6 +214,13 @@ export async function discoverModels(
     case 'ollama':
       result = await fetchOllamaModels(baseUrl)
       break
+    case 'gemini':
+      if (!apiKey) {
+        result = { models: FALLBACK_MODELS.gemini, source: 'fallback', fetchedAt: Date.now() }
+      } else {
+        result = await fetchGeminiModels(apiKey)
+      }
+      break
     default:
       result = { models: [], source: 'fallback', fetchedAt: Date.now() }
   }
@@ -167,6 +233,8 @@ export function clearModelCache(): void {
   modelCache.clear()
 }
 
-export function getFallbackModels(provider: 'openai' | 'anthropic' | 'ollama'): ModelInfo[] {
+export function getFallbackModels(
+  provider: 'openai' | 'anthropic' | 'ollama' | 'gemini',
+): ModelInfo[] {
   return FALLBACK_MODELS[provider] || []
 }
