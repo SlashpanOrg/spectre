@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT_ALLOW_RECOVERY_MODE=false
+
+  spectre:
+    build: .
+    volumes:
+      - ~/.spectre:/home/spectre/.spectre
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - SPECTRE_CONFIG_DIR=/home/spectre/.spectre
+    depends_on:
+      - qdrant
+    stdin_open: true
+    tty: true
+
+volumes:
+  qdrant_storage:

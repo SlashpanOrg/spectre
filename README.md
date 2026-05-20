@@ -1,57 +1,118 @@
-# SPECTER — AI Development Intelligence Agent
+# Spectre
 
-## Vision
-Specter is a self-hosted AI agent that becomes your team's institutional memory. It ingests your entire development lifecycle — repos, PRs, issues, commits, discussions, and decisions — to build a living, queryable knowledge graph of your codebase and team's collective intelligence.
+> Your AI-powered development companion
 
-## The Problem
-Every engineering team faces the same challenges:
-- **Knowledge loss** when developers leave or switch teams
-- **Repeated decisions** because past context is forgotten
-- **Slow onboarding** that takes months instead of days
-- **Hidden tech debt** that accumulates silently
-- **PR reviews** that lack historical architectural context
+Spectre is a session-based TUI AI developer tool that helps you understand, review, and document your codebase. Built for developers who want to stay in flow.
 
-## What Specter Does
+**Built by Slashpan Technologies Private Limited** | Contact: sp@slashpan.com
 
-### Core Capabilities
-- **Institutional Memory** — Answers "Why did we choose X over Y?" with evidence from past decisions, PRs, and discussions
-- **Proactive PR Review** — Reviews pull requests with deep architectural and historical context, not just surface-level suggestions
-- **Tech Debt Detection** — Identifies patterns of accumulating debt before they become critical
-- **Auto-Documentation** — Generates runbooks, onboarding guides, decision logs, and architecture docs from actual code and history
-- **Impact Simulation** — Answers "What if we change X?" with full impact analysis across the codebase
+## Features
 
-### How It Works
-1. **Ingest** — Connects to your Git repos, issue trackers, CI/CD pipelines, and communication tools
-2. **Index** — Builds a semantic knowledge graph linking code, decisions, people, and time
-3. **Intelligence** — Uses your API keys (OpenAI, Anthropic, etc.) to power AI reasoning over the graph
-4. **Interact** — Query via CLI, web UI, or API — ask questions, get answers with evidence
+- **Session-based TUI**: Single REPL-like session, no CLI subcommands
+- **Multi-provider AI**: OpenAI, Anthropic, Ollama with dynamic model discovery
+- **Codebase indexing**: Git history → vector embeddings → semantic search
+- **PR review**: AI-powered branch diff analysis
+- **Tech debt detection**: Code quality analysis with health scoring
+- **Documentation generation**: Runbooks, onboarding guides, ADRs, architecture docs
+- **Agentic workflows**: Multi-step task planning and execution
 
-## Key Features
-- Self-hosted — your data never leaves your infrastructure
-- Bring your own API keys — no vendor lock-in
-- Pluggable model support — OpenAI, Anthropic, local models
-- Git-native — works with any Git repository
-- Extensible — custom connectors for any tool in your stack
-- Privacy-first — all processing happens on your infrastructure
+## Quick Start
 
-## Target Users
-- Engineering teams of all sizes
-- Open-source maintainers
-- DevOps and platform engineers
-- Technical leads and architects
-- Anyone who wants their codebase to remember everything
+```bash
+# Install
+npm install -g spectre
 
-## Tech Stack (Proposed)
-- **Backend:** Node.js / TypeScript
-- **Vector Store:** Qdrant / Weaviate (self-hosted)
-- **Knowledge Graph:** Neo4j (optional)
-- **Indexing:** Custom AST parsers + git history analysis
-- **AI Models:** User-provided API keys (OpenAI, Anthropic, etc.)
-- **UI:** Web dashboard + CLI
+# Or run from source
+git clone https://github.com/SlashpanOrg/spectre.git
+cd spectre
+npm install
+npm run build
+npm start
 
-## Open Source
-Specter will be fully open-source under a permissive license. Anyone can run it, contribute to it, and extend it.
+# Or use Docker
+docker compose up spectre
+```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/help` | List all available commands |
+| `/about` | Show version and contact info |
+| `/quit` | Exit session |
+| `/setup` | Configure AI providers and API keys |
+| `/model` | Switch AI model |
+| `/status` | Show current configuration |
+| `/index` | Index a Git repository |
+| `/query <question>` | Ask about your codebase |
+| `/review [base]` | Review current branch changes |
+| `/debt [branch]` | Analyze technical debt |
+| `/docs <type>` | Generate documentation |
+| `/agent <task>` | Run multi-step agent task |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                   Session (REPL)                 │
+├──────────┬──────────┬──────────┬────────────────┤
+│ Commands │   AI     │  Tools   │    Agent       │
+├──────────┼──────────┼──────────┼────────────────┤
+│ /setup   │ OpenAI   │ Index    │ Orchestrator   │
+│ /model   │ Anthropic│ Query    │ Planner        │
+│ /review  │ Ollama   │ Review   │ Interrupt      │
+│ /debt    │          │ Debt     │ Clarification  │
+│ /docs    │          │ Docs     │                │
+└──────────┴──────────┴──────────┴────────────────┘
+┌─────────────────────────────────────────────────┐
+│                 Storage Layer                     │
+├──────────────────┬──────────────────────────────┤
+│   Qdrant         │   SQLite                      │
+│   (vectors)      │   (metadata, history)         │
+└──────────────────┴──────────────────────────────┘
+```
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run tests
+npm test
+
+# Type check
+npm run typecheck
+
+# Build
+npm run build
+
+# Lint
+npm run lint
+
+# Format
+npm run format
+```
+
+## Configuration
+
+Spectre stores configuration in `~/.spectre/config.json`. API keys are encrypted locally using AES encryption.
+
+## Docker
+
+```bash
+# Start with Qdrant
+docker compose up
+
+# Run against a local repo
+docker compose run -v $(pwd):/workspace spectre
+```
+
+## License
+
+MIT
 
 ---
 
-*Built for developers who believe their codebase should be as smart as the people who built it.*
+Built by **Slashpan Technologies Private Limited**
+Contact: sp@slashpan.com
