@@ -1,4 +1,7 @@
 import { Command } from 'commander'
+import { render } from 'ink'
+import React from 'react'
+import { IndexPanel } from '../tui/index-panel.js'
 
 export function indexCommand(program: Command): void {
   program
@@ -6,7 +9,7 @@ export function indexCommand(program: Command): void {
     .description('Index a Git repository')
     .argument('[repo]', 'Path to Git repository', '.')
     .option('-f, --full', 'Force full re-index')
-    .action(async (_repo, _opts) => {
-      console.log('Indexing repository... (coming soon)')
+    .action(async (repo, opts) => {
+      render(React.createElement(IndexPanel, { repoPath: repo, forceFull: opts.full }))
     })
 }
