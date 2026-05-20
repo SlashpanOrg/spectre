@@ -36,11 +36,11 @@ function ensureConfigDir(): void {
   }
 }
 
-function encryptKey(key: string): string {
+export function encryptKey(key: string): string {
   return CryptoJS.AES.encrypt(key, ENCRYPTION_KEY).toString()
 }
 
-function decryptKey(encrypted: string): string {
+export function decryptKey(encrypted: string): string {
   const bytes = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY)
   return bytes.toString(CryptoJS.enc.Utf8)
 }
@@ -99,4 +99,4 @@ export function removeProvider(name: string): void {
   saveConfig(config)
 }
 
-export { encryptKey, decryptKey, CONFIG_DIR, CONFIG_FILE }
+export { CONFIG_DIR, CONFIG_FILE }

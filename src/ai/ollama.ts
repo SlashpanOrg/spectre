@@ -37,6 +37,31 @@ export class OllamaProvider implements AIProvider {
     return content
   }
 
+  async *generateCompletionStream(
+    prompt: string,
+    options?: CompletionOptions,
+  ): AsyncIterable<string> {
+    const stream = await this.client.chat.completions.create({
+      model: options?.model || this.model,
+      messages: [
+        ...(options?.systemPrompt
+          ? [{ role: 'system' as const, content: options.systemPrompt }]
+          : []),
+        { role: 'user' as const, content: prompt },
+      ],
+      temperature: options?.temperature ?? 0.3,
+      max_tokens: options?.maxTokens,
+      stream: true,
+    })
+
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content
+      if (content) {
+        yield content
+      }
+    }
+  }
+
   async generateEmbedding(text: string): Promise<number[]> {
     const response = await this.client.embeddings.create({
       model: 'nomic-embed-text',

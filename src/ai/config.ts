@@ -18,7 +18,7 @@ export function createProvider(config: ProviderConfig): AIProvider {
     case 'ollama':
       return new OllamaProvider(config.baseUrl, config.model)
     default:
-      throw new Error(`Unknown provider: ${config.name}`)
+      throw new Error(`Unknown provider: ${(config as ProviderConfig).name}`)
   }
 }
 
@@ -27,7 +27,7 @@ export function getProvider(): AIProvider {
 
   const active = getActiveProvider()
   if (!active) {
-    throw new Error('No active AI provider configured. Run `spectre setup` to configure one.')
+    throw new Error('No active AI provider configured. Run /setup to configure one.')
   }
 
   const apiKey = active.apiKey ? decryptKey(active.apiKey) : undefined

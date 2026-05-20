@@ -3,12 +3,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { loadConfig, saveConfig, addProvider, setActiveProvider, getActiveProvider, removeProvider, CONFIG_DIR } from '../../src/utils/config.js'
 
-const TEST_CONFIG_DIR = path.join(CONFIG_DIR, 'test')
-const TEST_CONFIG_FILE = path.join(TEST_CONFIG_DIR, 'config.json')
-
 describe('Config Management', () => {
   beforeEach(() => {
-    // Reset config to clean state before each test
+    const config = loadConfig()
+    config.providers = []
+    config.activeProvider = 'openai'
+    saveConfig(config)
+  })
+
+  afterEach(() => {
     const config = loadConfig()
     config.providers = []
     config.activeProvider = 'openai'
@@ -65,7 +68,6 @@ describe('Config Management', () => {
   })
 
   it('should remove a provider', () => {
-    // Clean slate
     const config = loadConfig()
     config.providers = []
     saveConfig(config)

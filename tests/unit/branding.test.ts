@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { getWelcomeBanner, getVersionInfo, TOOL_NAME, TAGLINE, BUILT_BY, CONTACT_EMAIL, GITHUB_URL } from '../../src/utils/branding.js'
+import {
+  TOOL_NAME,
+  TAGLINE,
+  BUILT_BY,
+  CONTACT_EMAIL,
+  GITHUB_URL,
+  WELCOME_MESSAGE,
+  HELP_MESSAGE,
+  VERSION,
+} from '../../src/utils/branding.js'
 
 describe('Branding', () => {
   it('should export correct constants', () => {
@@ -8,21 +17,28 @@ describe('Branding', () => {
     expect(BUILT_BY).toBe('Built by Slashpan Technologies Private Limited')
     expect(CONTACT_EMAIL).toBe('sp@slashpan.com')
     expect(GITHUB_URL).toBe('https://github.com/SlashpanOrg/spectre')
+    expect(VERSION).toBe('0.1.0')
   })
 
-  it('should generate welcome banner with all branding', () => {
-    const banner = getWelcomeBanner()
-    expect(banner).toContain('SPECTRE')
-    expect(banner).toContain('AI Development Intelligence Agent')
-    expect(banner).toContain('Slashpan Technologies Private Limited')
-    expect(banner).toContain('sp@slashpan.com')
-    expect(banner).toContain('github.com/SlashpanOrg/spectre')
+  it('should generate welcome message with all branding', () => {
+    expect(WELCOME_MESSAGE).toContain('SPECTRE')
+    expect(WELCOME_MESSAGE).toContain('AI Development Intelligence Agent')
+    expect(WELCOME_MESSAGE).toContain('Slashpan Technologies Private Limited')
+    expect(WELCOME_MESSAGE).toContain('sp@slashpan.com')
+    expect(WELCOME_MESSAGE).toContain('github.com/SlashpanOrg/spectre')
   })
 
-  it('should generate version info', () => {
-    const info = getVersionInfo('1.2.3')
-    expect(info).toContain('SPECTRE v1.2.3')
-    expect(info).toContain('Slashpan Technologies Private Limited')
-    expect(info).toContain('sp@slashpan.com')
+  it('should include ASCII art in welcome message', () => {
+    expect(WELCOME_MESSAGE).toContain('╭─')
+    expect(WELCOME_MESSAGE).toContain('╰─')
+  })
+
+  it('should generate help message with commands', () => {
+    expect(HELP_MESSAGE).toContain('/help')
+    expect(HELP_MESSAGE).toContain('/setup')
+    expect(HELP_MESSAGE).toContain('/model')
+    expect(HELP_MESSAGE).toContain('/index')
+    expect(HELP_MESSAGE).toContain('/query')
+    expect(HELP_MESSAGE).toContain('/quit')
   })
 })
