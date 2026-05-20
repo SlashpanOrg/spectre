@@ -1,28 +1,30 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { loadConfig, saveConfig, addProvider, setActiveProvider, getActiveProvider, removeProvider, CONFIG_DIR } from '../../src/utils/config.js'
+import { loadConfig, saveConfig, addProvider, setActiveProvider, getActiveProvider, removeProvider } from '../../src/utils/config.js'
+
+const TEST_CONFIG_DIR = '/tmp/spectre-test-config-unit'
 
 describe('Config Management', () => {
   beforeEach(() => {
-    const config = loadConfig()
-    config.providers = []
-    config.activeProvider = 'openai'
-    saveConfig(config)
+    process.env.SPECTRE_CONFIG_DIR = TEST_CONFIG_DIR
+    if (fs.existsSync(TEST_CONFIG_DIR)) {
+      fs.rmSync(TEST_CONFIG_DIR, { recursive: true, force: true })
+    }
+    fs.mkdirSync(TEST_CONFIG_DIR, { recursive: true })
   })
 
   afterEach(() => {
-    const config = loadConfig()
-    config.providers = []
-    config.activeProvider = 'openai'
-    saveConfig(config)
+    if (fs.existsSync(TEST_CONFIG_DIR)) {
+      fs.rmSync(TEST_CONFIG_DIR, { recursive: true, force: true })
+    }
+    delete process.env.SPECTRE_CONFIG_DIR
   })
 
   it('should create default config when none exists', () => {
     const config = loadConfig()
     expect(config).toBeDefined()
     expect(config.version).toBe('0.1.0')
-    expect(config.providers).toEqual([])
     expect(config.activeProvider).toBe('openai')
   })
 

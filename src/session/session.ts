@@ -1,6 +1,8 @@
 import readline from 'node:readline'
 import { CommandParser } from '../commands/parser.js'
 import { WELCOME_MESSAGE } from '../utils/branding.js'
+import { SetupWizard } from '../commands/setup-wizard.js'
+import { getActiveProvider } from '../utils/config.js'
 
 export interface SessionState {
   isRunning: boolean
@@ -36,7 +38,7 @@ export class Session {
   private setupInputHandling(): void {
     this.rl.on('SIGINT', () => {
       console.log('\nOperation interrupted. Type /quit to exit.')
-      this.rl.prompt()
+      this.prompt()
     })
 
     this.rl.on('SIGTSTP', () => {
@@ -46,6 +48,7 @@ export class Session {
 
   async start(): Promise<void> {
     this.state.isRunning = true
+    this.updateProviderStatus()
 
     console.log(WELCOME_MESSAGE)
     console.log('Type /help for available commands or just ask a question.\n')
@@ -77,6 +80,16 @@ export class Session {
           this.state.isRunning = false
           break
         }
+
+        if (result === '__WIZARD__') {
+          const wizard = new SetupWizard(this.rl)
+          const wizardResult = await wizard.run()
+          console.log(`\n${wizardResult}\n`)
+          this.updateProviderStatus()
+          this.prompt()
+          continue
+        }
+
         console.log(`\n${result}\n`)
       } else {
         console.log('\nNatural language queries coming soon. Use /help for available commands.\n')
@@ -90,7 +103,14 @@ export class Session {
   }
 
   private prompt(): void {
-    this.rl.write('\r> ')
+    const providerTag =
+      this.state.currentProvider !== 'none'
+        ? ` [${this.state.currentProvider}:${this.state.currentModel}]`
+        : ''
+    this.rl.write(`\r> `)
+    if (providerTag) {
+      this.rl.write('')
+    }
   }
 
   private async *readLines(): AsyncIterable<string> {
@@ -99,12 +119,18 @@ export class Session {
     }
   }
 
-  getState(): SessionState {
-    return { ...this.state }
+  private updateProviderStatus(): void {
+    const active = getActiveProvider()
+    if (active) {
+      this.state.currentProvider = active.name
+      this.state.currentModel = active.model
+    } else {
+      this.state.currentProvider = 'none'
+      this.state.currentModel = 'none'
+    }
   }
 
-  updateProvider(provider: string, model: string): void {
-    this.state.currentProvider = provider
-    this.state.currentModel = model
+  getState(): SessionState {
+    return { ...this.state }
   }
 }

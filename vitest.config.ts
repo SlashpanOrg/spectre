@@ -5,6 +5,12 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    sequence: {
+      concurrent: false,
+    },
+    env: {
+      SPECTRE_CONFIG_DIR: '/tmp/spectre-test-config',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
