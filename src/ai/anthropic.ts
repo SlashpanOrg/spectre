@@ -55,6 +55,26 @@ export class AnthropicProvider implements AIProvider {
     )
   }
 
+  async generateWithContext(question: string, context: string): Promise<string> {
+    const response = await this.client.messages.create({
+      model: this.model,
+      max_tokens: 4096,
+      system:
+        'You are Spectre, an AI assistant analyzing Git history. Use the provided context to answer the question. If the context does not contain enough information, say so clearly.',
+      messages: [
+        { role: 'user' as const, content: `Context:\n${context}\n\nQuestion: ${question}` },
+      ],
+      temperature: 0.3,
+    })
+
+    const content = response.content[0]
+    if (!content || content.type !== 'text') {
+      throw new Error('Empty response from Anthropic')
+    }
+
+    return content.text
+  }
+
   async countTokens(text: string): Promise<number> {
     const response = await this.client.messages.create({
       model: this.model,

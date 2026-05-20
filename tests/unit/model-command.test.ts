@@ -65,7 +65,7 @@ describe('Model Command', () => {
     expect(result).toContain('gpt-4o-mini')
   })
 
-  it('should reject invalid model', async () => {
+  it('should allow custom model name', async () => {
     const config = loadConfig()
     config.providers = [{
       name: 'openai',
@@ -76,8 +76,8 @@ describe('Model Command', () => {
     config.activeProvider = 'openai'
     saveConfig(config)
 
-    const result = await modelCommand.execute('invalid-model')
-    expect(result).toContain('not available')
-    expect(result).toContain('gpt-4o')
+    const result = await modelCommand.execute('custom-model-name')
+    expect(result).toContain('Switched to')
+    expect(result).toContain('custom-model-name')
   })
 })

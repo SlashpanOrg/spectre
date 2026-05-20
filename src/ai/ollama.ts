@@ -71,6 +71,28 @@ export class OllamaProvider implements AIProvider {
     return response.data[0].embedding
   }
 
+  async generateWithContext(question: string, context: string): Promise<string> {
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      messages: [
+        {
+          role: 'system' as const,
+          content:
+            'You are Spectre, an AI assistant analyzing Git history. Use the provided context to answer the question. If the context does not contain enough information, say so clearly.',
+        },
+        { role: 'user' as const, content: `Context:\n${context}\n\nQuestion: ${question}` },
+      ],
+      temperature: 0.3,
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) {
+      throw new Error('Empty response from Ollama')
+    }
+
+    return content
+  }
+
   async countTokens(text: string): Promise<number> {
     return text.split(/\s+/).length
   }

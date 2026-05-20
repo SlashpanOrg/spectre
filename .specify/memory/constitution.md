@@ -102,7 +102,20 @@ Users MUST provide their own AI API keys or configure local models. Spectre neve
 - Multiple API keys can be configured and switched within session
 - Local LLM configuration must be equally polished
 
-### Article VIII: Git-Native Design
+### Article VIII: Dynamic Model Discovery
+
+Spectre MUST dynamically fetch available models from each provider's API rather than relying on hardcoded lists.
+
+- OpenAI: `GET https://api.openai.com/v1/models` — fetch all models, filter for chat models (gpt-*)
+- Anthropic: No public model listing API exists — maintain a curated fallback list but allow custom model names
+- Ollama: `GET http://localhost:11434/api/tags` — fetch locally downloaded models
+- The `/model` command MUST display dynamically fetched model lists
+- The `/setup` wizard MUST use dynamic model lists for provider selection
+- If a provider API is unreachable, fall back to a curated list of known models
+- Users MUST be able to enter custom model names not present in any list
+- Model lists MUST be cached locally to reduce API calls and support offline use
+
+### Article IX: Git-Native Design
 
 Spectre MUST integrate deeply with Git workflows.
 
@@ -111,7 +124,7 @@ Spectre MUST integrate deeply with Git workflows.
 - Commit history as first-class data source
 - GitHub, GitLab, and self-hosted Git support
 
-### Article IX: Test-First Imperative
+### Article X: Test-First Imperative
 
 This is NON-NEGOTIABLE: All implementation MUST follow strict Test-Driven Development.
 

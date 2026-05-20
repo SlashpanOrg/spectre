@@ -95,6 +95,14 @@ As a user, I want to ask Spectre to perform multi-step tasks (e.g., "index this 
 - **FR-9:** Session MUST support keyboard shortcuts (Ctrl+C interrupt, Ctrl+D exit, arrow history)
 - **FR-10:** In-session wizard MUST guide API key configuration with masking
 - **FR-11:** System MUST support OpenAI, Anthropic, and Ollama providers
+- **FR-11a:** System MUST dynamically fetch available models from OpenAI API (`GET /v1/models`) and filter for chat models (gpt-*)
+- **FR-11b:** System MUST dynamically fetch available models from Ollama (`GET /api/tags`) for locally downloaded models
+- **FR-11c:** System MUST maintain a curated fallback list for Anthropic models (no public listing API) and allow custom model names
+- **FR-11d:** The `/model` command MUST display dynamically fetched model lists from the active provider
+- **FR-11e:** The `/setup` wizard MUST use dynamic model lists when guiding provider and model selection
+- **FR-11f:** If a provider API is unreachable, the system MUST fall back to a curated list of known models
+- **FR-11g:** Users MUST be able to enter custom model names not present in any fetched or fallback list
+- **FR-11h:** Dynamically fetched model lists MUST be cached locally to reduce API calls and support offline use
 - **FR-12:** System MUST index Git repositories and build knowledge graph
 - **FR-13:** System MUST answer natural language questions with evidence
 - **FR-14:** System MUST analyze PRs with architectural context

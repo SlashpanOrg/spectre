@@ -1,11 +1,6 @@
 import { CommandHandler } from './parser.js'
-import { getActiveProvider, setActiveProvider, loadConfig } from '../utils/config.js'
-
-const AVAILABLE_MODELS: Record<string, string[]> = {
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
-  anthropic: ['claude-sonnet-4-20250514', 'claude-haiku-4-20250514', 'claude-opus-4-20250514'],
-  ollama: ['llama3', 'mistral', 'codellama', 'phi3'],
-}
+import { getActiveProvider, setActiveProvider, loadConfig, decryptKey } from '../utils/config.js'
+import { discoverModels } from '../ai/model-discovery.js'
 
 export const modelCommand: CommandHandler = {
   name: 'model',
@@ -19,19 +14,26 @@ export const modelCommand: CommandHandler = {
     }
 
     if (!args) {
-      const models = AVAILABLE_MODELS[active.name] || [active.model]
-      const modelList = models
-        .map((m) => (m === active.model ? `  ● ${m} (active)` : `  ○ ${m}`))
+      const apiKey = active.apiKey ? decryptKey(active.apiKey) : undefined
+      const discovery = await discoverModels(active.name, apiKey, active.baseUrl)
+
+      const sourceLabel =
+        discovery.source === 'api'
+          ? ' (from API)'
+          : discovery.source === 'local'
+            ? ' (local)'
+            : ' (fallback)'
+      const modelList = discovery.models
+        .slice(0, 10)
+        .map((m) => (m.id === active.model ? `  ● ${m.id} (active)` : `  ○ ${m.id}`))
         .join('\n')
-      return `Current provider: ${active.name}\nCurrent model: ${active.model}\n\nAvailable models:\n${modelList}\n\nSwitch with: /model <name>`
+      const moreText =
+        discovery.models.length > 10 ? `\n  ... and ${discovery.models.length - 10} more` : ''
+
+      return `Current provider: ${active.name}\nCurrent model: ${active.model}\n\nAvailable models${sourceLabel}:\n${modelList}${moreText}\n\nSwitch with: /model <name>`
     }
 
     const targetModel = args.trim()
-
-    const available = AVAILABLE_MODELS[active.name] || []
-    if (available.length > 0 && !available.includes(targetModel)) {
-      return `Model "${targetModel}" not available for ${active.name}.\nAvailable: ${available.join(', ')}\n\nOr use a custom model with /setup.`
-    }
 
     const provider = config.providers.find((p) => p.name === active.name)
     if (!provider) {
@@ -41,7 +43,8 @@ export const modelCommand: CommandHandler = {
     provider.model = targetModel
     config.providers = config.providers.map((p) => (p.name === active.name ? provider : p))
 
-    import('../utils/config.js').then(({ saveConfig }) => saveConfig(config))
+    const { saveConfig } = await import('../utils/config.js')
+    saveConfig(config)
     setActiveProvider(active.name)
 
     return `Switched to ${active.name} (${targetModel})`

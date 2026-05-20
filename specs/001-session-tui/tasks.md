@@ -82,7 +82,17 @@
 - Support multiple configured providers
 - Persist model preferences
 
-### Task 2.3: Model Command [P]
+### Task 2.3: Dynamic Model Discovery [P]
+**File:** `src/ai/model-discovery.ts`
+- Implement OpenAI model fetcher: `GET https://api.openai.com/v1/models`, filter for gpt-* chat models
+- Implement Ollama model fetcher: `GET http://localhost:11434/api/tags` for local models
+- Implement Anthropic curated fallback list with custom model name support
+- Build model cache with TTL-based refresh to reduce API calls
+- Implement fallback to curated list when provider API is unreachable
+- Support custom model name entry not present in any list
+- Integrate model discovery with `/setup` wizard and `/model` command
+
+### Task 2.4: Model Command [P]
 **File:** `src/commands/model.ts`
 - Implement `/model` command
 - Display current model and provider
@@ -90,7 +100,7 @@
 - Handle model switch within session
 - Validate model compatibility
 
-### Task 2.4: AI Provider Abstraction [P]
+### Task 2.5: AI Provider Abstraction [P]
 **File:** `src/ai/provider.ts`, `src/ai/openai.ts`, `src/ai/anthropic.ts`, `src/ai/ollama.ts`
 - Create provider interface
 - Implement OpenAI provider with streaming
@@ -98,7 +108,7 @@
 - Implement Ollama provider with streaming
 - Add streaming response support for all providers
 
-### Task 2.5: Config Persistence [P]
+### Task 2.6: Config Persistence [P]
 **File:** `src/utils/config.ts`, `src/storage/session-store.ts`
 - Implement encrypted API key storage
 - Create configuration file management
@@ -324,7 +334,8 @@
 ### Group B (Can run in parallel)
 - Task 2.1: Configuration Wizard
 - Task 2.2: Model Manager
-- Task 2.4: AI Provider Abstraction
+- Task 2.3: Dynamic Model Discovery
+- Task 2.5: AI Provider Abstraction
 
 ### Group C (Can run in parallel)
 - Task 3.1: Git Scanner
@@ -345,7 +356,7 @@
 
 ```
 1.1, 1.2, 1.3 → 1.4 → 1.5 → 1.6 → 1.7
-1.7 → 2.1, 2.2, 2.4 → 2.3 → 2.5
+1.7 → 2.1, 2.2, 2.3, 2.5 → 2.4 → 2.6
 2.5 → 3.1, 3.2, 3.3 → 3.4 → 3.5 → 3.6 → 3.7
 3.7 → 4.1, 4.2, 4.3 → 4.4 → 4.5 → 4.6
 4.6 → 5.1, 5.2, 5.3 → 5.4 → 5.5

@@ -3,6 +3,7 @@ export interface AIProvider {
   generateCompletion(prompt: string, options?: CompletionOptions): Promise<string>
   generateCompletionStream(prompt: string, options?: CompletionOptions): AsyncIterable<string>
   generateEmbedding(text: string): Promise<number[]>
+  generateWithContext(question: string, context: string): Promise<string>
   countTokens(text: string): Promise<number>
 }
 

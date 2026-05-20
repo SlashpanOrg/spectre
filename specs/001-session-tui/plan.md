@@ -34,9 +34,10 @@
 - Local filesystem for cached analysis results
 
 **AI Provider Support:**
-- OpenAI (gpt-4o, gpt-4o-mini)
-- Anthropic (claude-sonnet-4, claude-haiku)
-- Local LLM via Ollama (llama3, mistral, etc.)
+- OpenAI: dynamic model listing via `GET /v1/models`, filtered for chat models (gpt-*)
+- Anthropic: curated fallback list (claude-sonnet-4, claude-haiku, etc.) with custom model name support
+- Ollama: dynamic model listing via `GET /api/tags` for locally downloaded models
+- Model lists cached locally with TTL-based refresh
 
 **Development Standards:**
 - ESLint + Prettier for code quality
@@ -97,12 +98,22 @@
 - [x] Keys stored encrypted locally
 - [x] No AI inference provided by Spectre
 
-### Article VIII: Git-Native Design
+### Article VIII: Dynamic Model Discovery
+- [x] OpenAI model listing via `GET /v1/models` with gpt-* filtering
+- [x] Ollama model listing via `GET /api/tags` for local models
+- [x] Anthropic curated fallback list with custom model name support
+- [x] `/model` command uses dynamic model lists
+- [x] `/setup` wizard uses dynamic model lists
+- [x] Fallback to curated list when API unreachable
+- [x] Custom model name entry supported
+- [x] Local caching of model lists
+
+### Article IX: Git-Native Design
 - [x] Deep Git integration
 - [x] Branch-aware analysis
 - [x] Commit history as first-class data
 
-### Article IX: Test-First Imperative
+### Article X: Test-First Imperative
 - [x] All implementation follows TDD
 - [x] Unit, integration, and E2E tests
 - [x] CI pipeline configured
@@ -146,7 +157,8 @@ spectre/
 │   │   ├── anthropic.ts        # Anthropic provider
 │   │   ├── ollama.ts           # Local LLM provider
 │   │   ├── manager.ts          # Model switching manager
-│   │   └── config.ts           # API key management
+│   │   ├── config.ts           # API key management
+│   │   └── model-discovery.ts  # Dynamic model fetching & caching
 │   ├── storage/                # Storage layer
 │   │   ├── vector-store.ts     # Qdrant vector store
 │   │   ├── metadata-store.ts   # SQLite metadata store
@@ -186,8 +198,15 @@ spectre/
 ### Phase 2: In-Session Configuration (Week 3)
 - `/setup` command with interactive wizard
 - API key input with masking
-- Provider selection and model listing
-- `/model` command for switching models
+- Provider selection and dynamic model listing
+  - OpenAI: fetch `GET /v1/models`, filter for gpt-* chat models
+  - Anthropic: use curated fallback list, allow custom model names
+  - Ollama: fetch `GET /api/tags` for local models
+- `/model` command for switching models with dynamic model lists
+- Model discovery module with provider-specific fetchers
+- Local model cache with TTL-based refresh
+- Fallback to curated list when provider API unreachable
+- Custom model name entry support
 - Model manager for provider switching
 - Configuration persistence
 
