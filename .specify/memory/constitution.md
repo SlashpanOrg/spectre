@@ -2,41 +2,89 @@
 
 ## Project Identity
 
-**Project Name:** Specter  
+**Project Name:** Spectre  
 **Version:** 0.1.0  
 **Created:** 2026-05-20  
 **Built by:** Slashpan Technologies Private Limited  
 **Contact:** sp@slashpan.com  
-**Repository:** https://github.com/slashpan/spectre  
+**Repository:** https://github.com/SlashpanOrg/spectre  
 **License:** MIT (Open Source)
 
 ## Mission Statement
 
-Specter is a self-hosted AI Development Intelligence Agent that becomes your team's institutional memory. It ingests your entire development lifecycle — repos, PRs, issues, commits, discussions, and decisions — to build a living, queryable knowledge graph of your codebase and team's collective intelligence.
+Spectre is a self-hosted AI Development Intelligence Agent that becomes your team's institutional memory. It runs as a persistent session-based TUI (like Claude Code / OpenCode) where you chat with your codebase's knowledge graph, index repositories, review PRs, detect tech debt, and generate documentation — all within a single interactive terminal session.
 
 ## Core Values
 
-1. **Privacy First** — All data stays on user infrastructure
-2. **Open Source** — Fully transparent, community-driven development
-3. **User-Owned AI** — Users bring their own API keys or local models
-4. **Developer Experience** — Terminal-first with beautiful TUI
-5. **Extensibility** — Plugin architecture for custom connectors
+1. **Session-First Design** — One command opens everything; no scattered CLI subcommands
+2. **Privacy First** — All data stays on user infrastructure
+3. **Open Source** — Fully transparent, community-driven development
+4. **User-Owned AI** — Users bring their own API keys or local models
+5. **Developer Experience** — Sophisticated TUI with chat, tools, and agentic capabilities
 
 ## Articles of Development
 
-### Article I: Terminal-First Design
+### Article I: Session-Based TUI Mandate
 
-Every feature MUST be accessible through the terminal user interface (TUI). The TUI is the primary interface, not an afterthought.
+Spectre MUST be a persistent session-based terminal application, NOT a collection of CLI subcommands.
 
-- All core functionality must work via CLI commands
-- TUI must be beautiful, responsive, and intuitive
-- ASCII art intro screen required for brand identity
-- Keyboard navigation must be fully supported
-- Color schemes must be accessible (colorblind-friendly)
+- Running `spectre` opens a single interactive session (REPL-like)
+- ALL functionality is accessed within the session — no external subcommands
+- Session must support chat-like interface with streaming responses
+- Session must support slash commands for tool invocation (e.g., `/index`, `/query`, `/review`)
+- Session must support model switching without restarting
+- Session must support tool calling from within the chat
+- Session must maintain context across interactions
+- Session must have a beautiful ASCII art welcome screen with Slashpan branding
+- Session must support keyboard navigation and shortcuts
+- Session must be responsive with no perceptible lag
 
-### Article II: Self-Hosted Mandate
+### Article II: In-Session Configuration Wizard
 
-Specter MUST run entirely on user infrastructure. No cloud dependencies for core functionality.
+All configuration MUST be accessible within the session.
+
+- `/setup` or `/config` command opens API key configuration wizard
+- Users can link/unlink API keys (OpenAI, Anthropic, Google, etc.) within session
+- Users can switch models within session without restarting
+- Local LLM (Ollama) configuration accessible within session
+- All configuration changes take effect immediately in the session
+- Configuration persists across sessions
+
+### Article III: Chat-First Interaction Model
+
+The primary interaction mode is conversational chat within the session.
+
+- Users type natural language questions/commands in the chat
+- AI responds with streaming text in the terminal
+- Chat history is maintained within the session
+- Users can reference previous messages in the conversation
+- Multi-turn conversations are supported
+- Responses include evidence links, code references, and structured data
+
+### Article IV: Tool Calling Within Session
+
+Spectre MUST expose its capabilities as callable tools within the session.
+
+- Tools are invoked via slash commands or natural language
+- Available tools: index, query, review, debt, docs, setup, status
+- Tool results are displayed inline in the chat
+- Tools can be chained or composed within a single session
+- Tool parameters can be specified inline or via interactive prompts
+- Tool execution progress is shown in real-time
+
+### Article V: Agentic Capabilities
+
+Spectre MUST support agentic workflows within the session.
+
+- Agent can autonomously execute multi-step tasks when requested
+- Agent can call tools on behalf of the user
+- Agent can report progress and ask for clarification
+- Agent can maintain state across multiple actions
+- Users can interrupt agent execution at any time
+
+### Article VI: Self-Hosted Mandate
+
+Spectre MUST run entirely on user infrastructure. No cloud dependencies for core functionality.
 
 - All data processing happens locally
 - Vector store runs locally (Qdrant/Weaviate self-hosted)
@@ -44,79 +92,40 @@ Specter MUST run entirely on user infrastructure. No cloud dependencies for core
 - API keys are stored locally and never transmitted
 - Local LLM support is first-class, not secondary
 
-### Article III: API Key Ownership
+### Article VII: API Key Ownership
 
-Users MUST provide their own AI API keys or configure local models. Specter never provides AI inference.
+Users MUST provide their own AI API keys or configure local models. Spectre never provides AI inference.
 
 - Support OpenAI, Anthropic, Google, and other providers
 - Support local models via Ollama, LM Studio, etc.
-- Setup wizard must guide users through API key configuration
-- Multiple API keys can be configured and switched
+- In-session wizard guides users through API key configuration
+- Multiple API keys can be configured and switched within session
 - Local LLM configuration must be equally polished
 
-### Article IV: Test-First Imperative
+### Article VIII: Git-Native Design
 
-This is NON-NEGOTIABLE: All implementation MUST follow strict Test-Driven Development.
-
-- Unit tests written before implementation
-- Integration tests for all external connectors
-- E2E tests for TUI workflows
-- Tests must pass on CI before merge
-
-### Article V: Easy Setup Mandate
-
-Specter MUST be runnable immediately after cloning with minimal setup.
-
-- `npm install && npm start` must work
-- Setup wizard guides through all configuration
-- Default configurations work out of the box
-- Docker support for containerized deployment
-- Clear error messages for missing dependencies
-
-### Article VI: Git-Native Design
-
-Specter MUST integrate deeply with Git workflows.
+Spectre MUST integrate deeply with Git workflows.
 
 - Git repository scanning is core functionality
 - Branch-aware analysis
 - Commit history as first-class data source
 - GitHub, GitLab, and self-hosted Git support
-- Webhook integration for real-time updates
 
-### Article VII: Simplicity Over Complexity
+### Article IX: Test-First Imperative
 
-Start simple, add complexity only when proven necessary.
+This is NON-NEGOTIABLE: All implementation MUST follow strict Test-Driven Development.
 
-- Maximum 3 core packages for initial implementation
-- No premature abstraction
-- Clear separation of concerns
-- Each module must be independently testable
-
-### Article VIII: Documentation as Code
-
-All documentation MUST be versioned with code and generated where possible.
-
-- README must be comprehensive
-- CLI help must be auto-generated
-- API docs must be generated from code
-- Examples must be tested and working
-
-### Article IX: Open Source Community Standards
-
-Specter MUST follow open source best practices.
-
-- CONTRIBUTING.md with clear guidelines
-- CODE_OF_CONDUCT.md required
-- Security policy documented
-- Release process automated
-- Community issue templates provided
+- Unit tests written before implementation
+- Integration tests for all external connectors
+- E2E tests for TUI session workflows
+- Tests must pass on CI before merge
 
 ## Branding Requirements
 
-- All tools must display "Built by Slashpan Technologies Private Limited"
-- Contact email: sp@slashpan.com must be visible in help/about
-- ASCII art logo must be consistent across tools
-- GitHub repository must have proper attribution
+- ASCII art octopus logo displayed on session start
+- "Built by Slashpan Technologies Private Limited" visible in session
+- Contact email: sp@slashpan.com accessible via `/about` command
+- GitHub repository URL visible in session
 
 ## Technical Standards
 
