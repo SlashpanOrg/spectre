@@ -3,6 +3,9 @@ import { CommandParser } from '../commands/parser.js'
 import { WELCOME_MESSAGE } from '../utils/branding.js'
 import { SetupWizard } from '../commands/setup-wizard.js'
 import { getActiveProvider } from '../utils/config.js'
+import { getProvider, clearProviderCache } from '../ai/config.js'
+import { AgentOrchestrator, AgentTask } from '../agent/orchestrator.js'
+import { logger } from '../utils/logger.js'
 
 export interface SessionState {
   isRunning: boolean
@@ -16,6 +19,7 @@ export class Session {
   private rl: readline.Interface
   private parser: CommandParser
   private state: SessionState
+  private agent: AgentOrchestrator | null = null
 
   constructor(parser: CommandParser) {
     this.parser = parser
@@ -92,7 +96,8 @@ export class Session {
 
         console.log(`\n${result}\n`)
       } else {
-        console.log('\nNatural language queries coming soon. Use /help for available commands.\n')
+        // Natural language query - use agent
+        await this.handleNaturalLanguage(trimmed)
       }
 
       this.prompt()
@@ -127,6 +132,51 @@ export class Session {
     } else {
       this.state.currentProvider = 'none'
       this.state.currentModel = 'none'
+    }
+  }
+
+  private async handleNaturalLanguage(input: string): Promise<void> {
+    try {
+      clearProviderCache()
+      const provider = getProvider()
+
+      if (!this.agent) {
+        this.agent = new AgentOrchestrator(provider)
+      }
+
+      console.log('\n🤖 Planning...')
+
+      const task = await this.agent.execute(input, (task: AgentTask) => {
+        // Show progress
+        const running = task.steps.findIndex((s) => s.status === 'running')
+        const currentStep = task.steps[running]
+
+        if (currentStep) {
+          process.stdout.write(
+            `\r  Step ${running + 1}/${task.steps.length}: ${currentStep.description} [${currentStep.status}]`,
+          )
+        }
+      })
+
+      console.log()
+
+      if (task.status === 'interrupted') {
+        console.log('\nTask interrupted by user.')
+      } else if (task.status === 'failed') {
+        const failedStep = task.steps.find((s) => s.status === 'failed')
+        console.log(`\nTask failed: ${failedStep?.error || 'Unknown error'}`)
+      } else {
+        console.log(`\n${task.result || 'Task completed.'}`)
+        for (const step of task.steps) {
+          if (step.result) {
+            console.log(`  ✓ ${step.description}`)
+          }
+        }
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      logger.error('Agent execution failed:', msg)
+      console.log(`\nAgent failed: ${msg}`)
     }
   }
 

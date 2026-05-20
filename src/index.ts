@@ -14,6 +14,7 @@ import {
   debtCommand,
   docsCommand,
 } from './commands/tools.js'
+import { agentCommand } from './commands/agent.js'
 
 function main(): void {
   const parser = new CommandParser()
@@ -30,6 +31,7 @@ function main(): void {
   parser.register(reviewCommand)
   parser.register(debtCommand)
   parser.register(docsCommand)
+  parser.register(agentCommand)
 
   const session = new Session(parser)
   session.start().catch((error) => {
