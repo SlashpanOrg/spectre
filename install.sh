@@ -122,7 +122,7 @@ install_deps() {
   cd "$src_dir"
   
   info "Installing dependencies..."
-  npm install --production 2>&1 | tail -5
+  npm install --production --ignore-scripts 2>&1 | tail -5
   success "Dependencies installed"
 }
 
