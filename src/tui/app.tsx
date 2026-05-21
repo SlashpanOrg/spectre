@@ -23,8 +23,8 @@ import {
   Provider,
 } from '../utils/config.js'
 import { getProvider, clearProviderCache } from '../ai/config.js'
-import { AgentOrchestrator, AgentTask } from '../agent/orchestrator.js'
-import { runAgentTool } from '../agent/tool-runner.js'
+import { AgentOrchestrator } from '../agent/orchestrator.js'
+import { ToolRegistry } from '../agent/tools/registry.js'
 import { discoverModels, ModelInfo } from '../ai/model-discovery.js'
 import { createSession, SessionStore } from '../session/session-store.js'
 import { logger } from '../utils/logger.js'
@@ -108,10 +108,12 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   }>({ visible: false, current: 0, total: 0, label: '' })
 
   const orchestratorRef = useRef<AgentOrchestrator | null>(null)
-  const getOrchestrator = useCallback(() => {
+  const getOrchestrator = useCallback(async () => {
     if (!orchestratorRef.current) {
       try {
-        orchestratorRef.current = new AgentOrchestrator(getProvider(), runAgentTool)
+        const toolRegistry = new ToolRegistry()
+        orchestratorRef.current = new AgentOrchestrator(getProvider(), toolRegistry)
+        await orchestratorRef.current.initialize()
       } catch {
         orchestratorRef.current = null
       }
@@ -174,7 +176,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
 
       try {
         clearProviderCache()
-        const orch = getOrchestrator()
+        const orch = await getOrchestrator()
         if (!orch) {
           addMessage('error', 'No AI provider configured. Run /setup to configure one.')
           setIsProcessing(false)
@@ -187,59 +189,20 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           {
             id: taskMsgId,
             role: 'system',
-            content: `Assigned to Spectre\nTask: ${taskDescription}\nStatus: planning...`,
+            content: `Assigned to Spectre\nTask: ${taskDescription}\nStatus: processing...`,
             timestamp: new Date(),
           },
         ])
 
-        const task = await orch.execute(taskDescription, (t: AgentTask) => {
-          const completed = t.steps.filter((s) => s.status === 'completed').length
-          const total = t.steps.length
-          const runningIndex = t.steps.findIndex((s) => s.status === 'running')
-          const running = runningIndex >= 0 ? t.steps[runningIndex] : undefined
-          const failed = t.steps.find((s) => s.status === 'failed')
+        showProgress(`Agent: ${taskDescription}`, 0, 1, 'Processing...')
 
-          showProgress(
-            `Agent: ${taskDescription}`,
-            completed,
-            total,
-            running ? `Current: ${running.description}` : failed ? `Failed: ${failed.error}` : undefined,
-          )
-
-          const details = [
-            'Assigned to Spectre',
-            `Task: ${taskDescription}`,
-            `Status: ${t.status}`,
-            `Progress: ${completed}/${total || '?'} steps`,
-            running ? `Current: ${running.description}` : undefined,
-            failed ? `Issue: ${failed.error || failed.description}` : undefined,
-            'Ctrl+C attempts to stop the active operation.',
-          ].filter(Boolean)
-
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === taskMsgId ? { ...m, content: details.join('\n'), timestamp: new Date() } : m,
-            ),
-          )
-        })
+        const response = await orch.processMessage(taskDescription)
 
         hideProgress()
 
-        const stepLines = task.steps.map((step) => {
-          const icon = step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : '○'
-          return `${icon} ${step.description} (${step.tool})${step.error ? `\n   Error: ${step.error}` : ''}`
-        })
-        const summary = [
-          `Agent Task: ${task.status}`,
-          `Steps: ${task.steps.filter((s) => s.status === 'completed').length}/${task.steps.length} completed`,
-          '',
-          ...stepLines,
-          task.result ? `\n${task.result}` : undefined,
-        ].filter(Boolean)
-
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === taskMsgId ? { ...m, content: summary.join('\n'), role: 'tool' as const } : m,
+            m.id === taskMsgId ? { ...m, content: response, role: 'tool' as const } : m,
           ),
         )
       } catch (error) {
@@ -336,7 +299,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     async (input: string) => {
       try {
         clearProviderCache()
-        const orch = getOrchestrator()
+        const orch = await getOrchestrator()
         if (!orch) {
           addMessage('error', 'No AI provider configured. Run /setup to configure one.')
           setIsProcessing(false)
@@ -349,49 +312,16 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           { id: streamingMsgId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true },
         ])
 
-        await startStream(() => orch.queryStream(input))
+        const response = await orch.processMessage(input)
 
-        if (streamingContent) {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === streamingMsgId
-                ? { ...m, content: streamingContent, role: 'assistant' as const, isStreaming: false }
-                : m,
-            ),
-          )
-          persistSessionMessage('assistant', streamingContent)
-        } else {
-          const task = await orch.execute(input, (t: AgentTask) => {
-            const completed = t.steps.filter(
-              (s: { status: string }) => s.status === 'completed',
-            ).length
-            const total = t.steps.length
-            const current = t.steps.find((s: { status: string }) => s.status === 'running')
-            showProgress(
-              `Planning: ${input}`,
-              completed,
-              total,
-              current ? current.description : undefined,
-            )
-          })
-
-          hideProgress()
-
-          let output = `Task: ${task.status}\n`
-          output += `Steps: ${task.steps.filter((s: { status: string }) => s.status === 'completed').length}/${task.steps.length} completed\n\n`
-          for (const step of task.steps) {
-            const icon = step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : '○'
-            output += `${icon} ${step.description} (${step.tool})\n`
-            if (step.error) output += `   Error: ${step.error}\n`
-          }
-          if (task.result) output += `\n${task.result}`
-
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === streamingMsgId ? { ...m, content: output, role: 'tool' as const } : m,
-            ),
-          )
-        }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === streamingMsgId
+              ? { ...m, content: response, role: 'assistant' as const, isStreaming: false }
+              : m,
+          ),
+        )
+        persistSessionMessage('assistant', response)
       } catch (error) {
         hideProgress()
         const msg = error instanceof Error ? error.message : String(error)
@@ -614,7 +544,6 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
   const [selectedModel, setSelectedModel] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [inputBuffer, setInputBuffer] = useState('')
 
   useInput(
     (input, key) => {

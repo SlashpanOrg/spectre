@@ -1,0 +1,109 @@
+import { AgentOrchestrator } from '../agent/orchestrator.js'
+import { ToolRegistry } from '../agent/tools/registry.js'
+import { getProvider, clearProviderCache } from '../ai/config.js'
+import { logger } from '../utils/logger.js'
+
+interface TelegramUpdate {
+  update_id: number
+  message?: {
+    chat: { id: number }
+    text?: string
+  }
+}
+
+interface TelegramResponse<T> {
+  ok: boolean
+  result: T
+  description?: string
+}
+
+export class TelegramGateway {
+  private token: string
+  private running = false
+  private offset = 0
+
+  constructor(token: string) {
+    this.token = token
+  }
+
+  async start(): Promise<void> {
+    this.running = true
+    logger.info('Telegram gateway started')
+
+    while (this.running) {
+      try {
+        const updates = await this.getUpdates()
+        for (const update of updates) {
+          this.offset = update.update_id + 1
+          await this.handleUpdate(update)
+        }
+      } catch (error) {
+        logger.warn(`Telegram gateway polling failed: ${error instanceof Error ? error.message : String(error)}`)
+        await this.sleep(3000)
+      }
+    }
+  }
+
+  stop(): void {
+    this.running = false
+  }
+
+  private async getUpdates(): Promise<TelegramUpdate[]> {
+    const url = `https://api.telegram.org/bot${this.token}/getUpdates?timeout=30&offset=${this.offset}`
+    const response = await fetch(url)
+    const data = (await response.json()) as TelegramResponse<TelegramUpdate[]>
+
+    if (!data.ok) {
+      throw new Error(data.description || 'Telegram getUpdates failed')
+    }
+
+    return data.result
+  }
+
+  private async handleUpdate(update: TelegramUpdate): Promise<void> {
+    const message = update.message
+    if (!message?.text) return
+
+    const chatId = message.chat.id
+    const text = message.text.trim()
+
+    if (text === '/start') {
+      await this.sendMessage(chatId, 'Spectre gateway is online. Send a task or question.')
+      return
+    }
+
+    await this.sendMessage(chatId, 'Spectre is thinking...')
+
+    try {
+      clearProviderCache()
+      const orchestrator = new AgentOrchestrator(getProvider(), new ToolRegistry())
+      await orchestrator.initialize()
+      const response = await orchestrator.processMessage(text)
+      await this.sendMessage(chatId, this.truncate(response || '(no response)'))
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : String(error)
+      logger.error('Telegram agent execution failed:', messageText)
+      await this.sendMessage(chatId, `Spectre failed: ${messageText}`)
+    }
+  }
+
+  private async sendMessage(chatId: number, text: string): Promise<void> {
+    const response = await fetch(`https://api.telegram.org/bot${this.token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    })
+    const data = (await response.json()) as TelegramResponse<unknown>
+    if (!data.ok) {
+      throw new Error(data.description || 'Telegram sendMessage failed')
+    }
+  }
+
+  private truncate(text: string): string {
+    return text.length > 3900 ? `${text.slice(0, 3900)}\n\n...truncated` : text
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+}

@@ -14,8 +14,11 @@ import {
   reviewCommand,
   debtCommand,
   docsCommand,
+  toolCommand,
+  toolsCommand,
 } from './commands/tools.js'
 import { agentCommand } from './commands/agent.js'
+import { gatewayCommand } from './commands/gateway.js'
 import { newSessionCommand, resumeSessionCommand, sessionsCommand } from './commands/sessions.js'
 import { historyCommand, providersCommand, reposCommand } from './commands/info.js'
 import { SpectreApp } from './tui/app.js'
@@ -48,6 +51,9 @@ Commands (inside session):
   /debt [branch]       Analyze technical debt
   /docs <type>         Generate documentation
   /agent <task>        Run multi-step agent task
+  /tool <prompt>       Create a dynamic tool
+  /tools list          List dynamic tools
+  /gateway start TOKEN Start Telegram gateway
   /help                List all commands
   /quit                Exit session
 
@@ -75,6 +81,17 @@ function main(): void {
     process.exit(0)
   }
 
+  if (args[0] === 'gateway') {
+    gatewayCommand.execute(args.slice(1).join(' ')).then((result) => {
+      console.log(result)
+      process.exit(0)
+    }).catch((error) => {
+      console.error(error instanceof Error ? error.message : String(error))
+      process.exit(1)
+    })
+    return
+  }
+
   process.stdout.write('\x1Bc')
 
   const parser = new CommandParser()
@@ -91,7 +108,10 @@ function main(): void {
   parser.register(reviewCommand)
   parser.register(debtCommand)
   parser.register(docsCommand)
+  parser.register(toolCommand)
+  parser.register(toolsCommand)
   parser.register(agentCommand)
+  parser.register(gatewayCommand)
   parser.register(sessionsCommand)
   parser.register(newSessionCommand)
   parser.register(resumeSessionCommand)

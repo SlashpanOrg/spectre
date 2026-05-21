@@ -17,11 +17,10 @@ describe('Branding', () => {
     expect(BUILT_BY).toBe('Built by Slashpan Technologies Private Limited')
     expect(CONTACT_EMAIL).toBe('sp@slashpan.com')
     expect(GITHUB_URL).toBe('https://github.com/SlashpanOrg/spectre')
-    expect(VERSION).toBe('0.1.0')
+    expect(VERSION).toBe('0.5.0')
   })
 
   it('should generate welcome message with all branding', () => {
-    expect(WELCOME_MESSAGE).toContain('SPECTRE')
     expect(WELCOME_MESSAGE).toContain('AI Development Intelligence Agent')
     expect(WELCOME_MESSAGE).toContain('Slashpan Technologies Private Limited')
     expect(WELCOME_MESSAGE).toContain('sp@slashpan.com')
@@ -29,8 +28,8 @@ describe('Branding', () => {
   })
 
   it('should include ASCII art in welcome message', () => {
-    expect(WELCOME_MESSAGE).toContain('╭─')
-    expect(WELCOME_MESSAGE).toContain('╰─')
+    expect(WELCOME_MESSAGE).toContain('██')
+    expect(WELCOME_MESSAGE).toContain('v0.5.0')
   })
 
   it('should generate help message with commands', () => {

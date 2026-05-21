@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger.js'
+import { modelValidator } from './model-validator.js'
 
 export interface ModelInfo {
   id: string
@@ -6,11 +7,13 @@ export interface ModelInfo {
   created?: number
   ownedBy?: string
   isChatModel?: boolean
+  isAvailable?: boolean
+  availabilityReason?: string
 }
 
 export interface ModelDiscoveryResult {
   models: ModelInfo[]
-  source: 'api' | 'fallback' | 'local'
+  source: 'api' | 'fallback' | 'local' | 'validated'
   fetchedAt: number
   error?: string
 }
@@ -30,11 +33,11 @@ const FALLBACK_MODELS: Record<string, ModelInfo[]> = {
   ],
   ollama: [],
   gemini: [
-    { id: 'gemini-2.0-flash', provider: 'gemini', isChatModel: true },
-    { id: 'gemini-2.0-pro', provider: 'gemini', isChatModel: true },
+    { id: 'gemini-2.5-pro', provider: 'gemini', isChatModel: true },
+    { id: 'gemini-2.5-flash', provider: 'gemini', isChatModel: true },
+    { id: 'gemini-2.0-flash-lite', provider: 'gemini', isChatModel: true },
     { id: 'gemini-1.5-pro', provider: 'gemini', isChatModel: true },
     { id: 'gemini-1.5-flash', provider: 'gemini', isChatModel: true },
-    { id: 'gemini-2.0-flash-lite', provider: 'gemini', isChatModel: true },
   ],
 }
 
@@ -229,8 +232,54 @@ export async function discoverModels(
   return result
 }
 
+export async function discoverValidatedModels(
+  provider: 'openai' | 'anthropic' | 'ollama' | 'gemini',
+  apiKey?: string,
+  baseUrl?: string,
+): Promise<ModelDiscoveryResult> {
+  const discovery = await discoverModels(provider, apiKey, baseUrl)
+
+  const modelIds = discovery.models.map((m) => m.id)
+  const validationResults = await modelValidator.validateModels(
+    provider,
+    modelIds,
+    async (_modelId) => {
+      return {
+        available: true,
+        reason: undefined,
+      }
+    },
+  )
+
+  const validatedModels: ModelInfo[] = discovery.models.map((model) => {
+    const validation = validationResults.find((r) => r.id === model.id)
+    return {
+      ...model,
+      isAvailable: validation?.available ?? true,
+      availabilityReason: validation?.reason,
+    }
+  }).filter((m) => m.isAvailable)
+
+  return {
+    models: validatedModels,
+    source: 'validated',
+    fetchedAt: Date.now(),
+    error: discovery.error,
+  }
+}
+
+export function markModelUnavailable(provider: string, modelId: string, reason: string): void {
+  modelValidator.markModelUnavailable(provider, modelId, reason)
+  modelCache.clear()
+}
+
+export function getAvailableModels(provider: string): string[] {
+  return modelValidator.getAvailableModels(provider)
+}
+
 export function clearModelCache(): void {
   modelCache.clear()
+  modelValidator.clearCache()
 }
 
 export function getFallbackModels(

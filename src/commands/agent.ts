@@ -1,11 +1,11 @@
 import { getProvider, clearProviderCache } from '../ai/config.js'
-import { AgentOrchestrator, AgentTask } from '../agent/orchestrator.js'
-import { runAgentTool } from '../agent/tool-runner.js'
+import { AgentOrchestrator } from '../agent/orchestrator.js'
+import { ToolRegistry } from '../agent/tools/registry.js'
 import { logger } from '../utils/logger.js'
 
 export const agentCommand = {
   name: 'agent',
-  description: 'Run a multi-step agent task (auto-plans and executes tools)',
+  description: 'Run a coding agent task (uses tools to complete your request)',
   usage: '/agent <description>',
   execute: async (args?: string): Promise<string> => {
     try {
@@ -13,39 +13,16 @@ export const agentCommand = {
       const provider = getProvider()
 
       if (!args) {
-        return 'Usage: /agent <description>\nExample: /agent index this repo and analyze tech debt'
+        return 'Usage: /agent <description>\nExample: /agent read src/index.ts and explain the architecture'
       }
 
-      const orchestrator = new AgentOrchestrator(provider, runAgentTool)
+      const toolRegistry = new ToolRegistry()
+      const orchestrator = new AgentOrchestrator(provider, toolRegistry)
+      await orchestrator.initialize()
 
-      console.log('Planning...')
+      const response = await orchestrator.processMessage(args)
 
-      const task = await orchestrator.execute(args, (task: AgentTask) => {
-        const running = task.steps.findIndex((s) => s.status === 'running')
-        const currentStep = task.steps[running]
-        if (currentStep) {
-          process.stdout.write(
-            `\r  Step ${running + 1}/${task.steps.length}: ${currentStep.description} [${currentStep.status}]`,
-          )
-        }
-      })
-
-      console.log()
-
-      let output = `Agent Task: ${task.status}\n`
-      output += `Steps: ${task.steps.filter((s) => s.status === 'completed').length}/${task.steps.length} completed\n\n`
-
-      for (const step of task.steps) {
-        const icon = step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : '○'
-        output += `${icon} ${step.description} (${step.tool})\n`
-        if (step.error) output += `   Error: ${step.error}\n`
-      }
-
-      if (task.result) {
-        output += `\n${task.result}`
-      }
-
-      return output
+      return response
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error)
       logger.error('Agent command failed:', msg)

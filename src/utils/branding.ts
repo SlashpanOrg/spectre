@@ -13,7 +13,7 @@ export const BUILT_BY = 'Built by Slashpan Technologies Private Limited'
 export const CONTACT_EMAIL = 'sp@slashpan.com'
 export const GITHUB_URL = 'https://github.com/SlashpanOrg/spectre'
 
-export const VERSION = '0.3.0'
+export const VERSION = '0.5.0'
 
 export const WELCOME_MESSAGE = `${ASCII_ART}
 v${VERSION}
@@ -34,8 +34,13 @@ Models
   /model <name>       Switch directly to a model name
 
 Agent
-  /agent <task>       Assign a multi-step task to Spectre and track progress
-  Example: /agent index this repo and summarize technical debt
+  /agent <task>       Assign a task to the coding agent
+  /tool <prompt>      Create a dynamic tool explicitly
+  /tools list         List dynamic tools
+  /memory             View and edit agent memory files
+  /compact            Manually compact conversation
+  /permissions        List and manage permissions
+  Example: /agent read src/index.ts and explain the architecture
 
 Codebase
   /index              Index a Git repository
@@ -43,6 +48,12 @@ Codebase
   /review [base]      Review branch changes
   /debt [branch]      Analyze technical debt
   /docs <type>        Generate runbooks, onboarding guides, ADRs, or architecture docs
+
+Gateway
+  /gateway start <token> Start Telegram gateway (@BotFather token)
+  /gateway stop          Stop Telegram gateway
+  /gateway status        Show gateway status
+  /gateway logs          Show gateway logs
 
 Session
   /new [title]        Start a fresh saved chat session
@@ -55,6 +66,8 @@ Session
 Keyboard shortcuts:
   Ctrl+C              Interrupt current operation when possible
   Ctrl+Q / Ctrl+D     Exit session
+  Ctrl+K              Command palette
+  Ctrl+G              Toggle side panel
   ↑/↓                 Navigate interactive lists
   Tab or /            Filter setup/model lists
   Esc                 Cancel active setup/model flow
