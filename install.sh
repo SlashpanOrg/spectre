@@ -86,32 +86,23 @@ check_build_tools() {
 }
 
 create_install_dir() {
-  if [ ! -d "$INSTALL_DIR" ]; then
-    mkdir -p "$INSTALL_DIR"
-    success "Created install directory: $INSTALL_DIR"
+  if [ -d "$INSTALL_DIR" ]; then
+    info "Cleaning up existing installation..."
+    rm -rf "$INSTALL_DIR"
+    success "Cleaned up existing installation"
   fi
+  mkdir -p "$INSTALL_DIR"
+  success "Created install directory: $INSTALL_DIR"
 }
 
 clone_repo() {
   local src_dir="$INSTALL_DIR/src"
   
-  if [ -d "$src_dir/.git" ]; then
-    info "Updating existing installation..."
-    cd "$src_dir"
-    git fetch --tags
-    if [ "$SPECTRE_VERSION" = "latest" ]; then
-      git checkout main
-      git pull
-    else
-      git checkout "v${SPECTRE_VERSION}"
-    fi
-    success "Updated to $(git describe --tags --abbrev=0 2>/dev/null || echo 'latest')"
+  info "Cloning Spectre repository..."
+  if [ "$SPECTRE_VERSION" = "latest" ]; then
+    git clone --depth 1 "https://github.com/${SPECTRE_REPO}.git" "$src_dir"
   else
-    info "Cloning Spectre repository..."
-    if [ "$SPECTRE_VERSION" = "latest" ]; then
-      git clone --depth 1 "https://github.com/${SPECTRE_REPO}.git" "$src_dir"
-    else
-      git clone --depth 1 --branch "v${SPECTRE_VERSION}" "https://github.com/${SPECTRE_REPO}.git" "$src_dir"
+    git clone --depth 1 --branch "v${SPECTRE_VERSION}" "https://github.com/${SPECTRE_REPO}.git" "$src_dir"
     fi
     success "Cloned Spectre repository"
   fi
