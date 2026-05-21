@@ -625,29 +625,11 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
 
       if (isLoading) return
 
-      if (step === 'apiKey') {
-        if (key.return && inputBuffer.trim()) {
-          setApiKey(inputBuffer.trim())
-          startModelDiscovery()
-        } else if (key.backspace) {
-          setInputBuffer((prev) => prev.slice(0, -1))
-        } else if (!key.ctrl && !key.meta) {
-          setInputBuffer((prev) => prev + input)
-        }
-      } else if (step === 'ollamaUrl') {
-        if (key.return) {
-          setOllamaUrl(inputBuffer.trim() || 'http://localhost:11434')
-          startModelDiscovery()
-        } else if (key.backspace) {
-          setInputBuffer((prev) => prev.slice(0, -1))
-        } else if (!key.ctrl && !key.meta) {
-          setInputBuffer((prev) => prev + input)
-        }
-      } else if (step === 'complete') {
+      if (step === 'complete') {
         if (key.return) onComplete()
       }
     },
-    { isActive: step !== 'provider' && step !== 'model' },
+    { isActive: step === 'complete' },
   )
 
   const startModelDiscovery = useCallback(async () => {
@@ -715,6 +697,23 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
       }
     },
     [selectedProvider, apiKey, ollamaUrl],
+  )
+
+  const handleApiKeySubmit = useCallback(
+    (value: string) => {
+      if (!value.trim()) return
+      setApiKey(value.trim())
+      startModelDiscovery()
+    },
+    [startModelDiscovery],
+  )
+
+  const handleOllamaUrlSubmit = useCallback(
+    (value: string) => {
+      setOllamaUrl(value.trim() || 'http://localhost:11434')
+      startModelDiscovery()
+    },
+    [startModelDiscovery],
   )
 
   if (step === 'provider') {
@@ -836,29 +835,41 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
         </Box>
       )}
 
-      <Box flexDirection="column">
-        <Text bold>
-          {step === 'apiKey'
-            ? `Enter your ${selectedProvider?.label} API key:`
-            : 'Enter Ollama URL:'}
-        </Text>
-        <Box marginTop={1}>
-          <Text color={colors.highlight}>{'> '} </Text>
-          <Text color={colors.text}>
-            {inputBuffer || (step === 'apiKey' ? 'Paste or type your API key' : 'http://localhost:11434')}
-          </Text>
+      {step === 'apiKey' && (
+        <Box flexDirection="column">
+          <Text bold>Enter your {selectedProvider?.label} API key:</Text>
+          <Box marginTop={1}>
+            <TextInput
+              placeholder="Paste or type your API key..."
+              onSubmit={handleApiKeySubmit}
+            />
+          </Box>
+          <Box marginTop={1}>
+            <Text color={colors.textMuted} dimColor>(Your key is encrypted and stored locally)</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color={colors.textMuted} dimColor>Enter: confirm | Esc: cancel</Text>
+          </Box>
         </Box>
-        <Box marginTop={1}>
-          <Text color={colors.textMuted} dimColor>
-            {step === 'apiKey'
-              ? '(Your key is encrypted and stored locally)'
-              : '(default: http://localhost:11434)'}
-          </Text>
+      )}
+
+      {step === 'ollamaUrl' && (
+        <Box flexDirection="column">
+          <Text bold>Enter Ollama URL:</Text>
+          <Box marginTop={1}>
+            <TextInput
+              placeholder="http://localhost:11434"
+              onSubmit={handleOllamaUrlSubmit}
+            />
+          </Box>
+          <Box marginTop={1}>
+            <Text color={colors.textMuted} dimColor>(default: http://localhost:11434)</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color={colors.textMuted} dimColor>Enter: confirm | Esc: cancel</Text>
+          </Box>
         </Box>
-        <Box marginTop={1}>
-          <Text color={colors.textMuted} dimColor>Enter: confirm | Esc: cancel</Text>
-        </Box>
-      </Box>
+      )}
     </Box>
   )
 }
