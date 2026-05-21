@@ -2,6 +2,8 @@ import { AgentOrchestrator } from '../agent/orchestrator.js'
 import { ToolRegistry } from '../agent/tools/registry.js'
 import { getProvider, clearProviderCache } from '../ai/config.js'
 import { logger } from '../utils/logger.js'
+import { existsSync, writeFileSync } from 'fs'
+import { join } from 'path'
 
 interface TelegramUpdate {
   update_id: number
@@ -21,12 +23,34 @@ export class TelegramGateway {
   private token: string
   private running = false
   private offset = 0
+  private stateDir: string
+  private initFlagFile: string
+  private firstUserInteraction = true
 
   constructor(token: string) {
     this.token = token
+    this.stateDir = join(process.env.HOME || '~', '.spectre', 'gateway')
+    this.initFlagFile = join(this.stateDir, 'gateway_initialized')
+  }
+
+  private isFirstConnection(): boolean {
+    return !existsSync(this.initFlagFile)
+  }
+
+  private markAsConnected(): void {
+    writeFileSync(this.initFlagFile, Date.now().toString(), { mode: 0o600 })
   }
 
   async start(): Promise<void> {
+    const isFirstTime = this.isFirstConnection()
+    if (isFirstTime) {
+      logger.info('Telegram gateway connected for the first time')
+      this.markAsConnected()
+      this.firstUserInteraction = true
+    } else {
+      this.firstUserInteraction = false
+    }
+
     this.running = true
     logger.info('Telegram gateway started')
 
@@ -68,7 +92,15 @@ export class TelegramGateway {
     const text = message.text.trim()
 
     if (text === '/start') {
-      await this.sendMessage(chatId, 'Spectre gateway is online. Send a task or question.')
+      if (this.firstUserInteraction) {
+        this.firstUserInteraction = false
+        await this.sendMessage(
+          chatId,
+          '✨ **Spectre Gateway Online** ✨\n\nWelcome! The Spectre AI Development Intelligence Agent gateway is now connected to Telegram.\n\nYou can now:\n• Send tasks and questions\n• Get code analysis and suggestions\n• Execute development workflows\n• Manage agent operations\n\nJust send your task or question, and Spectre will handle it!\n\nType /help for available commands.',
+        )
+      } else {
+        await this.sendMessage(chatId, 'Spectre gateway is online. Send a task or question.')
+      }
       return
     }
 

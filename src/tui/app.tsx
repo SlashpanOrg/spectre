@@ -541,17 +541,17 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         model={currentModel}
       />
 
-      <Box flexDirection="row">
-        <Box flexDirection="column" flexGrow={1}>
-          <Box flexDirection="column">
-            {messages.map((msg) => (
-              <ChatMessageBox
-                key={msg.id}
-                message={msg}
-                focused={focusedMessageIds.has(msg.id)}
-              />
-            ))}
-          </Box>
+       <Box flexDirection="row">
+         <Box flexDirection="column" flexGrow={1}>
+           <Box flexDirection="column" flexGrow={1} overflowY="hidden">
+             {messages.map((msg) => (
+               <ChatMessageBox
+                 key={msg.id}
+                 message={msg}
+                 focused={focusedMessageIds.has(msg.id)}
+               />
+             ))}
+           </Box>
 
           <Box flexDirection="row" justifyContent="space-between" paddingX={2} paddingY={0}>
             <TokenBar
@@ -581,7 +581,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
               key={inputKey}
               placeholder={isProcessing ? 'Processing...' : 'Enter command or question...'}
               onSubmit={handleSubmit}
-              isDisabled={isProcessing}
+              isDisabled={isProcessing || showCommandPalette}
             />
             {isStreaming && <Text color={colors.warning}> │ Ctrl+C to cancel</Text>}
           </Box>
@@ -638,7 +638,7 @@ const ChatMessageBox: React.FC<{ message: AppMessage; focused: boolean }> = ({ m
   const textColor = message.role === 'system' || isDimmed ? colors.textMuted : colors.text
 
   return (
-    <Box flexDirection="column" paddingX={1} paddingY={0}>
+    <Box flexDirection="column" paddingX={2} paddingY={0}>
       <Box flexDirection="column" borderStyle="round" borderColor={borderColor} paddingX={1}>
         <Box>
           <Text bold={!isDimmed} color={isDimmed ? colors.textMuted : roleConfig.color} dimColor={isDimmed}>{roleConfig.label}</Text>
