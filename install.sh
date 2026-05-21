@@ -7,7 +7,7 @@ set -euo pipefail
 SPECTRE_REPO="SlashpanOrg/spectre"
 SPECTRE_VERSION="latest"
 INSTALL_DIR="${SPECTRE_INSTALL_DIR:-$HOME/.spectre}"
-BIN_DIR="${SPECTRE_BIN_DIR:-/usr/local/bin}"
+BIN_DIR="${SPECTRE_BIN_DIR:-$HOME/.local/bin}"
 NODE_MIN_VERSION=20
 
 # Colors
@@ -112,7 +112,7 @@ install_deps() {
   cd "$src_dir"
   
   info "Installing dependencies..."
-  npm install --production --ignore-scripts 2>&1 | tail -5
+  npm install --ignore-scripts 2>&1 | tail -5
   success "Dependencies installed"
 }
 
@@ -136,16 +136,19 @@ create_symlink() {
 
   chmod +x "$bin_path"
 
+  mkdir -p "$BIN_DIR"
+
   if [ -L "$BIN_DIR/spectre" ] || [ -f "$BIN_DIR/spectre" ]; then
     rm -f "$BIN_DIR/spectre"
   fi
 
-  if [ ! -d "$BIN_DIR" ]; then
-    sudo mkdir -p "$BIN_DIR"
-  fi
-
-  sudo ln -s "$bin_path" "$BIN_DIR/spectre"
+  ln -s "$bin_path" "$BIN_DIR/spectre"
   success "Created symlink: $BIN_DIR/spectre"
+
+  if ! echo "$PATH" | grep -q "$BIN_DIR"; then
+    warn "$BIN_DIR is not in your PATH"
+    echo "  Add this to your shell config: export PATH=\"$BIN_DIR:\$PATH\""
+  fi
 }
 
 setup_config_dir() {
