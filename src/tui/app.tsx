@@ -71,7 +71,10 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   const { exit } = useApp()
   const colors = defaultTheme.colors
 
-  const [view, setView] = useState<AppView>('chat')
+  const [view, setView] = useState<AppView>(() => {
+    const active = getActiveProvider()
+    return active ? 'chat' : 'setup'
+  })
   const [messages, setMessages] = useState<AppMessage[]>([
     {
       id: 'welcome',
@@ -477,8 +480,13 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           )
         }}
         onCancel={() => {
-          setView('chat')
-          finishProcessing()
+          const active = getActiveProvider()
+          if (!active) {
+            exitCleanly()
+          } else {
+            setView('chat')
+            finishProcessing()
+          }
         }}
       />
     )
