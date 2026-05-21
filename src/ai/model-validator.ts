@@ -18,7 +18,6 @@ export interface ModelValidationCache {
   ttlMs: number
 }
 
-const CACHE_DIR = join(process.env.HOME || '~', '.spectre', 'cache')
 const CACHE_TTL_MS = 60 * 60 * 1000
 
 const KNOWN_UNAVAILABLE_PATTERNS = [
@@ -37,7 +36,7 @@ export class ModelValidator {
   private cachePath: string
 
   constructor() {
-    this.cachePath = CACHE_DIR
+    this.cachePath = join(process.env.HOME || '~', '.spectre', 'cache')
     if (!existsSync(this.cachePath)) {
       mkdirSync(this.cachePath, { recursive: true, mode: 0o700 })
     }

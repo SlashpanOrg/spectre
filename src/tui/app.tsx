@@ -126,7 +126,6 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   const orchestratorRef = useRef<AgentOrchestrator | null>(null)
 
   useEffect(() => {
-    clearTerminal()
     const handleResize = () => {
       setTerminalSize({
         columns: process.stdout.columns || 120,
