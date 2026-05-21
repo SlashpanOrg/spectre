@@ -103,9 +103,8 @@ clone_repo() {
     git clone --depth 1 "https://github.com/${SPECTRE_REPO}.git" "$src_dir"
   else
     git clone --depth 1 --branch "v${SPECTRE_VERSION}" "https://github.com/${SPECTRE_REPO}.git" "$src_dir"
-    fi
-    success "Cloned Spectre repository"
   fi
+  success "Cloned Spectre repository"
 }
 
 install_deps() {
