@@ -11,7 +11,9 @@ const mockClient = {
 }
 
 vi.mock('@qdrant/js-client-rest', () => ({
-  QdrantClient: vi.fn(() => mockClient),
+  QdrantClient: vi.fn(function () {
+    return mockClient
+  }),
 }))
 
 describe('VectorStore', () => {

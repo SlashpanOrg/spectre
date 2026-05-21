@@ -25,14 +25,16 @@ vi.mock('@google/generative-ai', () => {
     }),
   }
 
-  const MockGoogleGenerativeAI = vi.fn(() => ({
-    getGenerativeModel: vi.fn((config: { model: string }) => {
-      if (config.model.includes('embedding')) {
-        return mockEmbeddingModel
-      }
-      return mockModel
-    }),
-  }))
+  const MockGoogleGenerativeAI = vi.fn(function () {
+    return {
+      getGenerativeModel: vi.fn((config: { model: string }) => {
+        if (config.model.includes('embedding')) {
+          return mockEmbeddingModel
+        }
+        return mockModel
+      }),
+    }
+  })
 
   return {
     GoogleGenerativeAI: MockGoogleGenerativeAI,

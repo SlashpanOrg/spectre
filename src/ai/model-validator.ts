@@ -148,25 +148,26 @@ export class ModelValidator {
 
   markModelUnavailable(provider: string, modelId: string, reason: string): void {
     const cached = this.loadCache(provider)
-    if (cached) {
-      const existing = cached.models.find((m) => m.id === modelId)
-      if (existing) {
-        existing.available = false
-        existing.reason = reason
-        existing.errorCount++
-        existing.lastChecked = Date.now()
-      } else {
-        cached.models.push({
-          id: modelId,
-          provider,
-          available: false,
-          reason,
-          lastChecked: Date.now(),
-          errorCount: 1,
-        })
-      }
-      this.saveCache(provider, cached.models)
+    const models = cached?.models ?? []
+    const existing = models.find((m) => m.id === modelId)
+
+    if (existing) {
+      existing.available = false
+      existing.reason = reason
+      existing.errorCount++
+      existing.lastChecked = Date.now()
+    } else {
+      models.push({
+        id: modelId,
+        provider,
+        available: false,
+        reason,
+        lastChecked: Date.now(),
+        errorCount: 1,
+      })
     }
+
+    this.saveCache(provider, models)
   }
 
   getAvailableModels(provider: string): string[] {

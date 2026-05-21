@@ -96,5 +96,5 @@ describe('ModelValidator', () => {
 
     expect(result.available).toBe(false)
     expect(result.reason).toContain('timeout')
-  })
+  }, 7000)
 })
