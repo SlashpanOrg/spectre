@@ -431,6 +431,16 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     }))
   }, [parser, handleCommand])
 
+  const latestUserId = useMemo(() => {
+    return [...messages].reverse().find((msg) => msg.role === 'user')?.id
+  }, [messages])
+  const latestResponseId = useMemo(() => {
+    return [...messages].reverse().find((msg) => msg.role !== 'user' && msg.role !== 'system')?.id
+  }, [messages])
+  const focusedMessageIds = useMemo(() => {
+    return new Set([latestUserId, latestResponseId].filter(Boolean) as string[])
+  }, [latestUserId, latestResponseId])
+
   useInput(
     (input, key) => {
       if (input === 'q' && key.ctrl) {
@@ -454,11 +464,6 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     { key: 'Ctrl+U', action: 'panel' },
     { key: 'Ctrl+Q', action: 'quit' },
   ]
-
-  const visibleMessages = useMemo(() => {
-    const maxMessages = Math.max(4, Math.floor((terminalSize.rows - 14) / 4))
-    return messages.slice(-maxMessages)
-  }, [messages, terminalSize.rows])
 
   if (view === 'setup') {
     return (
@@ -519,7 +524,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   const status = isStreaming ? 'streaming' : isProcessing ? 'loading' : 'idle'
 
   return (
-    <Box flexDirection="column" height={terminalSize.rows} width={terminalSize.columns}>
+    <Box flexDirection="column" width={terminalSize.columns}>
       <Header
         title="Spectre"
         subtitle="AI Development Intelligence Agent"
@@ -528,11 +533,15 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         model={currentModel}
       />
 
-      <Box flexDirection="row" flexGrow={1} overflow="hidden">
-        <Box flexDirection="column" flexGrow={1} overflow="hidden">
-          <Box flexDirection="column" flexGrow={1} overflow="hidden">
-            {visibleMessages.map((msg) => (
-              <ChatMessageBox key={msg.id} message={msg} />
+      <Box flexDirection="row">
+        <Box flexDirection="column" flexGrow={1}>
+          <Box flexDirection="column">
+            {messages.map((msg) => (
+              <ChatMessageBox
+                key={msg.id}
+                message={msg}
+                focused={focusedMessageIds.has(msg.id)}
+              />
             ))}
           </Box>
 
@@ -570,13 +579,15 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           </Box>
         </Box>
 
-        <Box borderStyle="single" borderColor={colors.border} width={30}>
-          <SidePanel
-            title="Spectre"
-            sections={sidePanelSections}
-            visible={showSidePanel}
-          />
-        </Box>
+        {showSidePanel && (
+          <Box borderStyle="single" borderColor={colors.border} width={30}>
+            <SidePanel
+              title="Spectre"
+              sections={sidePanelSections}
+              visible={showSidePanel}
+            />
+          </Box>
+        )}
       </Box>
 
       <StatusBar
@@ -596,7 +607,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   )
 }
 
-const ChatMessageBox: React.FC<{ message: AppMessage }> = ({ message }) => {
+const ChatMessageBox: React.FC<{ message: AppMessage; focused: boolean }> = ({ message, focused }) => {
   const colors = defaultTheme.colors
   const roleConfig = (() => {
     switch (message.role) {
@@ -614,15 +625,18 @@ const ChatMessageBox: React.FC<{ message: AppMessage }> = ({ message }) => {
   })()
 
   const content = message.content.trim() || (message.isStreaming ? 'Thinking...' : 'No response text returned.')
+  const isDimmed = message.role === 'system' || !focused
+  const borderColor = isDimmed ? colors.border : roleConfig.color
+  const textColor = message.role === 'system' || isDimmed ? colors.textMuted : colors.text
 
   return (
     <Box flexDirection="column" paddingX={1} paddingY={0}>
-      <Box flexDirection="column" borderStyle="round" borderColor={roleConfig.color} paddingX={1}>
+      <Box flexDirection="column" borderStyle="round" borderColor={borderColor} paddingX={1}>
         <Box>
-          <Text bold color={roleConfig.color}>{roleConfig.label}</Text>
+          <Text bold={!isDimmed} color={isDimmed ? colors.textMuted : roleConfig.color} dimColor={isDimmed}>{roleConfig.label}</Text>
           {message.isStreaming && <Text color={colors.warning}> thinking</Text>}
         </Box>
-        <Text color={message.role === 'system' ? colors.textMuted : colors.text} wrap="wrap">
+        <Text color={textColor} dimColor={isDimmed} wrap="wrap">
           {content}
         </Text>
       </Box>
