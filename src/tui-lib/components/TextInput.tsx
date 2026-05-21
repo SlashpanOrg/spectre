@@ -80,9 +80,7 @@ export function TextInput({
   return (
     <Box flexDirection="column">
       <Box>
-        <Text color={colors.highlight}>
-          {'>'}{' '}
-        </Text>
+        <Text color={colors.highlight}>{'>'} </Text>
         <Text color={colors.text}>
           {value || (placeholder && <Text dimColor>{placeholder}</Text>)}
         </Text>

@@ -32,11 +32,7 @@ export {
   createProgressBar,
 } from './utils/colors.js'
 
-export type {
-  Theme,
-  ThemeColors,
-  ThemeSpacing,
-} from './types/theme.js'
+export type { Theme, ThemeColors, ThemeSpacing } from './types/theme.js'
 export { defaultTheme } from './types/theme.js'
 
 export type {
@@ -60,8 +56,4 @@ export type {
   TextInputProps,
 } from './types/component.js'
 
-export type {
-  KeyBinding,
-  KeyHandler,
-  KeyInfo,
-} from './types/keyboard.js'
+export type { KeyBinding, KeyHandler, KeyInfo } from './types/keyboard.js'

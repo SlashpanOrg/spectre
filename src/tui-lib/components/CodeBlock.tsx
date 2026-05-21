@@ -4,11 +4,7 @@ import { CodeBlockProps } from '../types/component.js'
 import { defaultTheme } from '../types/theme.js'
 import { highlightCode } from '../utils/syntax.js'
 
-export function CodeBlock({
-  code,
-  language = 'typescript',
-  theme = defaultTheme,
-}: CodeBlockProps) {
+export function CodeBlock({ code, language = 'typescript', theme = defaultTheme }: CodeBlockProps) {
   const colors = theme.colors
   const lines = code.split('\n')
   const maxLineNum = lines.length.toString().length

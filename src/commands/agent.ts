@@ -1,5 +1,6 @@
 import { getProvider, clearProviderCache } from '../ai/config.js'
 import { AgentOrchestrator, AgentTask } from '../agent/orchestrator.js'
+import { runAgentTool } from '../agent/tool-runner.js'
 import { logger } from '../utils/logger.js'
 
 export const agentCommand = {
@@ -15,7 +16,7 @@ export const agentCommand = {
         return 'Usage: /agent <description>\nExample: /agent index this repo and analyze tech debt'
       }
 
-      const orchestrator = new AgentOrchestrator(provider)
+      const orchestrator = new AgentOrchestrator(provider, runAgentTool)
 
       console.log('Planning...')
 

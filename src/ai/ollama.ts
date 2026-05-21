@@ -1,9 +1,16 @@
 import OpenAI from 'openai'
-import { AIProvider, CompletionOptions } from './provider.js'
+import { AIProvider, CompletionOptions, ProviderCapabilities } from './provider.js'
 import { logger } from '../utils/logger.js'
 
 export class OllamaProvider implements AIProvider {
   readonly name = 'ollama'
+  readonly capabilities: ProviderCapabilities = {
+    chat: true,
+    streaming: true,
+    embeddings: true,
+    embeddingModel: 'nomic-embed-text',
+    embeddingDimension: 768,
+  }
   private client: OpenAI
   private model: string
 
@@ -64,7 +71,7 @@ export class OllamaProvider implements AIProvider {
 
   async generateEmbedding(text: string): Promise<number[]> {
     const response = await this.client.embeddings.create({
-      model: 'nomic-embed-text',
+      model: this.capabilities.embeddingModel || 'nomic-embed-text',
       input: text,
     })
 

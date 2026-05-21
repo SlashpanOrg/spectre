@@ -83,6 +83,11 @@ describe('MetadataStore', () => {
 
     const repos = store.getAllRepos()
     expect(repos).toHaveLength(2)
+    expect(repos[0]).toMatchObject({
+      lastIndexedAt: '2026-01-02T00:00:00Z',
+      indexedCommitHash: 'bbb',
+      commitCount: 10,
+    })
   })
 
   it('should save and retrieve query history', () => {

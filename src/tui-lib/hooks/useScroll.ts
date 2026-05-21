@@ -13,10 +13,7 @@ export interface UseScrollReturn {
   setViewportSize: (size: number) => void
 }
 
-export function useScroll(
-  totalItems: number,
-  viewportSize: number,
-): UseScrollReturn {
+export function useScroll(totalItems: number, viewportSize: number): UseScrollReturn {
   const [scrollOffset, setScrollOffset] = useState(0)
   const [currentViewport, setCurrentViewport] = useState(viewportSize)
 

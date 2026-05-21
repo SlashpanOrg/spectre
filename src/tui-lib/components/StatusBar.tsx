@@ -54,13 +54,9 @@ export function StatusBar({
         {provider !== 'none' && provider !== '' && (
           <>
             <Text color={colors.border}>│</Text>
-            <Text color={colors.textMuted}>
-              {provider}
-            </Text>
+            <Text color={colors.textMuted}>{provider}</Text>
             <Text color={colors.textMuted}>/</Text>
-            <Text color={colors.textMuted}>
-              {model || 'none'}
-            </Text>
+            <Text color={colors.textMuted}>{model || 'none'}</Text>
           </>
         )}
       </Box>
@@ -71,10 +67,7 @@ export function StatusBar({
             <Text bold color={colors.highlight}>
               {s.key}
             </Text>
-            <Text color={colors.textMuted}>
-              {' '}
-              {s.action}
-            </Text>
+            <Text color={colors.textMuted}> {s.action}</Text>
           </Box>
         ))}
       </Box>

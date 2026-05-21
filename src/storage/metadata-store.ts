@@ -96,7 +96,18 @@ export class MetadataStore {
   }
 
   getAllRepos(): RepoMetadata[] {
-    return this.db.prepare('SELECT * FROM repos').all() as RepoMetadata[]
+    const rows = this.db
+      .prepare('SELECT * FROM repos ORDER BY last_indexed_at DESC')
+      .all() as Array<Record<string, unknown>>
+
+    return rows.map((row) => ({
+      id: row.id as string,
+      path: row.path as string,
+      branch: row.branch as string,
+      lastIndexedAt: row.last_indexed_at as string,
+      commitCount: Number(row.commit_count),
+      indexedCommitHash: row.indexed_commit_hash as string,
+    }))
   }
 
   saveQuery(query: QueryHistory): void {

@@ -28,12 +28,7 @@ export function Header({
           <Text bold color={colors.primary}>
             {title}
           </Text>
-          {version && (
-            <Text color={colors.textMuted}>
-              {' '}
-              v{version}
-            </Text>
-          )}
+          {version && <Text color={colors.textMuted}> v{version}</Text>}
         </Box>
         {subtitle && (
           <Text color={colors.textMuted} dimColor>

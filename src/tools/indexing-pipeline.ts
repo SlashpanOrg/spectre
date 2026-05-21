@@ -1,7 +1,12 @@
 import { GitScanner, CommitData, IndexProgress } from './indexer.js'
 import { VectorStore, VectorPoint } from '../storage/vector-store.js'
 import { MetadataStore } from '../storage/metadata-store.js'
-import { getProvider } from '../ai/config.js'
+import {
+  getEmbeddingProvider,
+  getProviderEmbeddingDimension,
+  getProviderVectorCollectionName,
+} from '../ai/config.js'
+import { AIProvider, ProviderName } from '../ai/provider.js'
 import { loadConfig, saveConfig } from '../utils/config.js'
 import { logger } from '../utils/logger.js'
 import crypto from 'node:crypto'
@@ -16,13 +21,14 @@ export interface IndexResult {
 
 export class IndexingPipeline {
   private scanner: GitScanner
-  private vectorStore: VectorStore
+  private vectorStore?: VectorStore
   private metadataStore: MetadataStore
+  private qdrantUrl: string
 
   constructor(repoPath: string) {
     this.scanner = new GitScanner(repoPath)
     const config = loadConfig()
-    this.vectorStore = new VectorStore(config.qdrantUrl)
+    this.qdrantUrl = config.qdrantUrl
     this.metadataStore = new MetadataStore(config.dbPath)
   }
 
@@ -37,7 +43,13 @@ export class IndexingPipeline {
       throw new Error('Not a Git repository')
     }
 
-    await this.vectorStore.initialize()
+    const embeddingProvider = getEmbeddingProvider()
+    const embeddingProviderName = embeddingProvider.name as ProviderName
+    const collectionName = getProviderVectorCollectionName(embeddingProviderName)
+    const vectorSize = getProviderEmbeddingDimension(embeddingProviderName)
+    const vectorStore = new VectorStore(this.qdrantUrl, collectionName)
+    await vectorStore.initialize(vectorSize)
+    this.vectorStore = vectorStore
 
     const branch = await this.scanner.getCurrentBranch()
     const lastIndexed = forceFull ? undefined : await this.scanner.getLastIndexedCommit()
@@ -47,14 +59,13 @@ export class IndexingPipeline {
     )
 
     const commits = await this.scanner.getCommits(lastIndexed, onProgress)
-    const provider = getProvider()
 
     let indexedCount = 0
     let skippedCount = 0
 
     for (const commit of commits) {
       try {
-        const embeddingId = await this.indexCommit(commit, provider)
+        const embeddingId = await this.indexCommit(commit, embeddingProvider)
         this.metadataStore.cacheCommit(
           commit.hash,
           commit.author,
@@ -112,11 +123,8 @@ export class IndexingPipeline {
     return result
   }
 
-  private async indexCommit(
-    commit: CommitData,
-    provider: ReturnType<typeof getProvider>,
-  ): Promise<string> {
-    const content = this.buildCommitContent(commit)
+  private async indexCommit(commit: CommitData, provider: AIProvider): Promise<string> {
+    const content = await this.buildCommitContent(commit)
     const embedding = await provider.generateEmbedding(content)
 
     const point: VectorPoint = {
@@ -134,21 +142,34 @@ export class IndexingPipeline {
       },
     }
 
+    if (!this.vectorStore) {
+      throw new Error('Vector store has not been initialized')
+    }
     await this.vectorStore.upsertPoints([point])
     return commit.hash
   }
 
-  private buildCommitContent(commit: CommitData): string {
+  private async buildCommitContent(commit: CommitData): Promise<string> {
+    const diff = await this.scanner.getCommitDiff(commit.hash)
     return `Commit: ${commit.hash}
 Author: ${commit.author} <${commit.email}>
 Date: ${commit.date}
 Branch: ${commit.branch}
 Message: ${commit.message}
-Files: ${commit.files.join(', ')}`
+Files: ${commit.files.join(', ')}
+
+Diff:
+${diff || '[diff unavailable]'}`
   }
 
   async getStats(): Promise<{ totalPoints: number; repos: number }> {
-    const points = await this.vectorStore.getPointCount()
+    if (!this.vectorStore) {
+      const embeddingProvider = getEmbeddingProvider()
+      const collectionName = getProviderVectorCollectionName(embeddingProvider.name as ProviderName)
+      this.vectorStore = new VectorStore(this.qdrantUrl, collectionName)
+    }
+    const vectorStore = this.vectorStore
+    const points = await vectorStore.getPointCount()
     const repos = this.metadataStore.getAllRepos()
     return { totalPoints: points, repos: repos.length }
   }

@@ -84,16 +84,11 @@ export function CommandPalette({
         <Text bold color={colors.primary}>
           Command Palette
         </Text>
-        <Text color={colors.textMuted}>
-          {' '}
-          ({filteredCommands.length} commands)
-        </Text>
+        <Text color={colors.textMuted}> ({filteredCommands.length} commands)</Text>
       </Box>
 
       <Box paddingX={2} marginBottom={1}>
-        <Text color={colors.highlight}>
-          {`>`}{' '}
-        </Text>
+        <Text color={colors.highlight}>{`>`} </Text>
         <Text color={colors.text} bold>
           {filter}
         </Text>
@@ -110,10 +105,7 @@ export function CommandPalette({
               <Text bold color={isSelected ? colors.highlight : colors.text}>
                 {cmd.name}
               </Text>
-              <Text color={colors.textMuted}>
-                {' '}
-                - {cmd.description}
-              </Text>
+              <Text color={colors.textMuted}> - {cmd.description}</Text>
               {cmd.shortcut && (
                 <Text color={colors.info} dimColor>
                   {' '}

@@ -1,6 +1,12 @@
 import { VectorStore } from '../storage/vector-store.js'
 import { MetadataStore } from '../storage/metadata-store.js'
-import { getProvider } from '../ai/config.js'
+import {
+  getEmbeddingProvider,
+  getProvider,
+  getProviderEmbeddingDimension,
+  getProviderVectorCollectionName,
+} from '../ai/config.js'
+import { ProviderName } from '../ai/provider.js'
 import { loadConfig } from '../utils/config.js'
 import { logger } from '../utils/logger.js'
 
@@ -18,21 +24,28 @@ export interface QueryResult {
 }
 
 export class QueryEngine {
-  private vectorStore: VectorStore
   private metadataStore: MetadataStore
+  private qdrantUrl: string
 
   constructor() {
     const config = loadConfig()
-    this.vectorStore = new VectorStore(config.qdrantUrl)
+    this.qdrantUrl = config.qdrantUrl
     this.metadataStore = new MetadataStore(config.dbPath)
   }
 
   async query(question: string, limit: number = 10): Promise<QueryResult> {
     const startTime = Date.now()
-    const provider = getProvider()
+    const chatProvider = getProvider()
+    const embeddingProvider = getEmbeddingProvider()
+    const embeddingProviderName = embeddingProvider.name as ProviderName
+    const vectorStore = new VectorStore(
+      this.qdrantUrl,
+      getProviderVectorCollectionName(embeddingProviderName),
+    )
+    await vectorStore.initialize(getProviderEmbeddingDimension(embeddingProviderName))
 
-    const questionEmbedding = await provider.generateEmbedding(question)
-    const vectorResults = await this.vectorStore.search(questionEmbedding, limit)
+    const questionEmbedding = await embeddingProvider.generateEmbedding(question)
+    const vectorResults = await vectorStore.search(questionEmbedding, limit)
 
     const evidence = vectorResults.map((r) => ({
       hash: r.payload.hash as string,
@@ -44,7 +57,7 @@ export class QueryEngine {
     }))
 
     const context = this.buildContext(evidence, question)
-    const answer = await provider.generateWithContext(question, context)
+    const answer = await chatProvider.generateWithContext(question, context)
 
     const duration = Date.now() - startTime
 

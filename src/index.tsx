@@ -16,6 +16,8 @@ import {
   docsCommand,
 } from './commands/tools.js'
 import { agentCommand } from './commands/agent.js'
+import { newSessionCommand, resumeSessionCommand, sessionsCommand } from './commands/sessions.js'
+import { historyCommand, providersCommand, reposCommand } from './commands/info.js'
 import { SpectreApp } from './tui/app.js'
 
 function main(): void {
@@ -34,6 +36,12 @@ function main(): void {
   parser.register(debtCommand)
   parser.register(docsCommand)
   parser.register(agentCommand)
+  parser.register(sessionsCommand)
+  parser.register(newSessionCommand)
+  parser.register(resumeSessionCommand)
+  parser.register(providersCommand)
+  parser.register(historyCommand)
+  parser.register(reposCommand)
 
   render(<SpectreApp parser={parser} />)
 }

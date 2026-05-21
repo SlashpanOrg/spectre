@@ -33,9 +33,7 @@ export function SidePanel({
       <Text bold color={colors.primary}>
         {title}
       </Text>
-      <Text color={colors.border}>
-        {'─'.repeat(Math.max(10, title.length))}
-      </Text>
+      <Text color={colors.border}>{'─'.repeat(Math.max(10, title.length))}</Text>
 
       {sections.map((section, si) => (
         <Box key={si} flexDirection="column" marginTop={1}>
@@ -44,14 +42,8 @@ export function SidePanel({
           </Text>
           {section.items.map((item, ii) => (
             <Box key={ii} flexDirection="row" justifyContent="space-between">
-              <Text color={colors.text}>
-                {item.label}
-              </Text>
-              {item.value && (
-                <Text color={statusColor(item.status)}>
-                  {item.value}
-                </Text>
-              )}
+              <Text color={colors.text}>{item.label}</Text>
+              {item.value && <Text color={statusColor(item.status)}>{item.value}</Text>}
             </Box>
           ))}
         </Box>

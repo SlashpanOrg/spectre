@@ -10,6 +10,7 @@ export interface VectorPoint {
 export class VectorStore {
   private client: QdrantClient
   private collectionName: string
+  private vectorSize?: number
 
   constructor(url: string = 'http://localhost:6333', collectionName: string = 'spectre') {
     this.client = new QdrantClient({ url })
@@ -17,6 +18,7 @@ export class VectorStore {
   }
 
   async initialize(vectorSize: number = 1536): Promise<void> {
+    this.vectorSize = vectorSize
     const collections = await this.client.getCollections()
     const exists = collections.collections.some((c) => c.name === this.collectionName)
 
@@ -28,11 +30,22 @@ export class VectorStore {
         },
       })
       logger.info(`Created Qdrant collection: ${this.collectionName}`)
+      return
+    }
+
+    const info = await this.client.getCollection(this.collectionName)
+    const existingSize = this.extractVectorSize(info)
+    if (existingSize !== undefined && existingSize !== vectorSize) {
+      throw new Error(
+        `Qdrant collection ${this.collectionName} dimension mismatch: expected ${vectorSize}, found ${existingSize}. Use a provider/dimension-specific collection or reindex.`,
+      )
     }
   }
 
   async upsertPoints(points: VectorPoint[]): Promise<void> {
     if (points.length === 0) return
+    this.assertInitialized()
+    points.forEach((point) => this.assertVectorDimension(point.vector))
 
     await this.client.upsert(this.collectionName, {
       wait: true,
@@ -50,6 +63,9 @@ export class VectorStore {
     vector: number[],
     limit: number = 10,
   ): Promise<Array<{ id: string; score: number; payload: Record<string, unknown> }>> {
+    this.assertInitialized()
+    this.assertVectorDimension(vector)
+
     const results = await this.client.search(this.collectionName, {
       vector,
       limit,
@@ -70,5 +86,33 @@ export class VectorStore {
   async getPointCount(): Promise<number> {
     const info = await this.client.getCollection(this.collectionName)
     return info.points_count ?? 0
+  }
+
+  private assertInitialized(): void {
+    if (!this.vectorSize) {
+      throw new Error('Vector store has not been initialized')
+    }
+  }
+
+  private assertVectorDimension(vector: number[]): void {
+    if (this.vectorSize && vector.length !== this.vectorSize) {
+      throw new Error(`Expected vector dimension ${this.vectorSize}, received ${vector.length}`)
+    }
+  }
+
+  private extractVectorSize(info: unknown): number | undefined {
+    const vectorConfig = (info as { config?: { params?: { vectors?: unknown } } }).config?.params
+      ?.vectors
+    if (!vectorConfig) return undefined
+    if (typeof (vectorConfig as { size?: unknown }).size === 'number') {
+      return (vectorConfig as { size: number }).size
+    }
+    if (typeof vectorConfig === 'object' && vectorConfig !== null) {
+      const firstNamedVector = Object.values(vectorConfig).find(
+        (value) => typeof (value as { size?: unknown })?.size === 'number',
+      ) as { size?: number } | undefined
+      return firstNamedVector?.size
+    }
+    return undefined
   }
 }

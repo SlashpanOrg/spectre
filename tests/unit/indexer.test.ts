@@ -31,6 +31,7 @@ vi.mock('simple-git', () => {
     }),
     branchLocal: vi.fn().mockResolvedValue({ all: ['main', 'develop'] }),
     tags: vi.fn().mockResolvedValue({ all: ['v1.0.0', 'v1.1.0'] }),
+    raw: vi.fn().mockResolvedValue('diff --git a/src/index.ts b/src/index.ts\n+console.log("hello")'),
   }
 
   return {
@@ -55,6 +56,7 @@ describe('GitScanner', () => {
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true })
     }
+    delete process.env.SPECTRE_CONFIG_DIR
   })
 
   it('should detect if directory is a git repo', async () => {
@@ -88,6 +90,12 @@ describe('GitScanner', () => {
     expect(files).toEqual(['src/index.ts', 'README.md'])
   })
 
+  it('should get the diff for a commit', async () => {
+    const diff = await scanner.getCommitDiff('abc123')
+    expect(diff).toContain('diff --git')
+    expect(diff).toContain('console.log')
+  })
+
   it('should get branches', async () => {
     const branches = await scanner.getBranches()
     expect(branches).toEqual(['main', 'develop'])
@@ -99,9 +107,11 @@ describe('GitScanner', () => {
   })
 
   it('should save and load last indexed commit', async () => {
+    process.env.SPECTRE_CONFIG_DIR = path.join(testDir, '.spectre-config')
     await scanner.saveLastIndexedCommit('abc123')
     const loaded = await scanner.getLastIndexedCommit()
     expect(loaded).toBe('abc123')
+    expect(fs.existsSync(path.join(testDir, '.spectre'))).toBe(false)
   })
 
   it('should return undefined for last indexed commit when not set', async () => {

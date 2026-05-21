@@ -1,9 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { AIProvider, CompletionOptions } from './provider.js'
+import { AIProvider, CompletionOptions, ProviderCapabilities } from './provider.js'
 import { logger } from '../utils/logger.js'
 
 export class AnthropicProvider implements AIProvider {
   readonly name = 'anthropic'
+  readonly capabilities: ProviderCapabilities = {
+    chat: true,
+    streaming: true,
+    embeddings: false,
+  }
   private client: Anthropic
   private model: string
 

@@ -33,12 +33,7 @@ export function Message({ message, theme = defaultTheme }: MessageProps) {
             AI
           </Text>
         )}
-        {message.isStreaming && (
-          <Text color={colors.warning}>
-            {' '}
-            ⠋
-          </Text>
-        )}
+        {message.isStreaming && <Text color={colors.warning}> ⠋</Text>}
       </Box>
 
       <Box flexDirection="column">

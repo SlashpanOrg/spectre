@@ -7,22 +7,25 @@ export function useKeyboard(handler: KeyHandler, isActive: boolean = true) {
   handlerRef.current = handler
 
   const inputHandler = useCallback(
-    (input: string, key: {
-      ctrl: boolean
-      shift: boolean
-      meta: boolean
-      escape: boolean
-      return: boolean
-      upArrow: boolean
-      downArrow: boolean
-      leftArrow: boolean
-      rightArrow: boolean
-      tab: boolean
-      backspace: boolean
-      delete: boolean
-      pageUp: boolean
-      pageDown: boolean
-    }) => {
+    (
+      input: string,
+      key: {
+        ctrl: boolean
+        shift: boolean
+        meta: boolean
+        escape: boolean
+        return: boolean
+        upArrow: boolean
+        downArrow: boolean
+        leftArrow: boolean
+        rightArrow: boolean
+        tab: boolean
+        backspace: boolean
+        delete: boolean
+        pageUp: boolean
+        pageDown: boolean
+      },
+    ) => {
       if (!isActive) return
 
       const keyInfo: KeyInfo = {

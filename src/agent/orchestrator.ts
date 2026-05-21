@@ -21,14 +21,17 @@ export interface AgentTask {
 
 export type ProgressCallback = (task: AgentTask) => void
 export type ClarificationCallback = (question: string) => Promise<string>
+export type ToolExecutor = (tool: string, args: string) => Promise<string>
 
 export class AgentOrchestrator {
   private provider: AIProvider
+  private toolExecutor?: ToolExecutor
   private currentTask: AgentTask | null = null
   private interrupted = false
 
-  constructor(provider: AIProvider) {
+  constructor(provider: AIProvider, toolExecutor?: ToolExecutor) {
     this.provider = provider
+    this.toolExecutor = toolExecutor
   }
 
   async execute(
@@ -163,9 +166,10 @@ Return ONLY valid JSON.`
   }
 
   private async executeTool(tool: string, args: string): Promise<string> {
-    // Tool execution is handled by the session through command handlers
-    // The orchestrator just coordinates - actual execution happens elsewhere
-    return `[Tool: ${tool} Args: ${args}]`
+    if (!this.toolExecutor) {
+      throw new Error('No tool executor configured for agent task execution')
+    }
+    return this.toolExecutor(tool, args)
   }
 
   private async generateSummary(task: AgentTask): Promise<string> {
@@ -175,10 +179,7 @@ Return ONLY valid JSON.`
     return `Task completed: ${completedSteps}/${totalSteps} steps successful.`
   }
 
-  async *queryStream(
-    userInput: string,
-    systemPrompt?: string,
-  ): AsyncIterable<string> {
+  async *queryStream(userInput: string, systemPrompt?: string): AsyncIterable<string> {
     const prompt = `You are Spectre, an AI development intelligence agent.
 Be concise and helpful. Focus on code analysis, architecture, and development tasks.
 

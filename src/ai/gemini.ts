@@ -1,9 +1,16 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai'
-import { AIProvider, CompletionOptions } from './provider.js'
+import { AIProvider, CompletionOptions, ProviderCapabilities } from './provider.js'
 import { logger } from '../utils/logger.js'
 
 export class GoogleGeminiProvider implements AIProvider {
   readonly name = 'gemini'
+  readonly capabilities: ProviderCapabilities = {
+    chat: true,
+    streaming: true,
+    embeddings: true,
+    embeddingModel: 'text-embedding-004',
+    embeddingDimension: 768,
+  }
   private client: GoogleGenerativeAI
   private model: GenerativeModel
 
@@ -54,7 +61,9 @@ export class GoogleGeminiProvider implements AIProvider {
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
-    const embeddingModel = this.client.getGenerativeModel({ model: 'text-embedding-004' })
+    const embeddingModel = this.client.getGenerativeModel({
+      model: this.capabilities.embeddingModel || 'text-embedding-004',
+    })
     const result = await embeddingModel.embedContent(text)
     return result.embedding.values
   }

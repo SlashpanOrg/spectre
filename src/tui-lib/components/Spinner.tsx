@@ -3,11 +3,7 @@ import { Box, Text } from 'ink'
 import { SpinnerProps } from '../types/component.js'
 import { defaultTheme } from '../types/theme.js'
 
-export function Spinner({
-  label,
-  visible = true,
-  theme = defaultTheme,
-}: SpinnerProps) {
+export function Spinner({ label, visible = true, theme = defaultTheme }: SpinnerProps) {
   const [frame, setFrame] = useState(0)
   const symbols = theme.symbols
 
@@ -25,14 +21,8 @@ export function Spinner({
 
   return (
     <Box>
-      <Text color={theme.colors.warning}>
-        {symbols.spinner[frame]}{' '}
-      </Text>
-      {label && (
-        <Text color={theme.colors.text}>
-          {label}
-        </Text>
-      )}
+      <Text color={theme.colors.warning}>{symbols.spinner[frame]} </Text>
+      {label && <Text color={theme.colors.text}>{label}</Text>}
     </Box>
   )
 }

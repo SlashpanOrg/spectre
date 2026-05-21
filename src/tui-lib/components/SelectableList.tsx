@@ -25,14 +25,10 @@ export function SelectableList<T = string>({
   }, [items, filter])
 
   const displayItems = filteredItems.map((f) => f.item)
-  const {
-    scrollOffset,
-    maxOffset,
-    visibleStart,
-    visibleEnd,
-    scrollUp,
-    scrollDown,
-  } = useScroll(displayItems.length, maxVisible)
+  const { scrollOffset, maxOffset, visibleStart, visibleEnd, scrollUp, scrollDown } = useScroll(
+    displayItems.length,
+    maxVisible,
+  )
 
   const handleSelect = useCallback(() => {
     const actualIndex = visibleStart + selectedIndex
@@ -76,7 +72,10 @@ export function SelectableList<T = string>({
         }
       } else if (key.downArrow) {
         const visibleCount = visibleEnd - visibleStart
-        if (selectedIndex < visibleCount - 1 && visibleStart + selectedIndex < displayItems.length - 1) {
+        if (
+          selectedIndex < visibleCount - 1 &&
+          visibleStart + selectedIndex < displayItems.length - 1
+        ) {
           setSelectedIndex((prev) => prev + 1)
         } else if (scrollOffset < maxOffset) {
           scrollDown()
@@ -109,25 +108,17 @@ export function SelectableList<T = string>({
           <Text bold color={colors.primary}>
             {title}
           </Text>
-          <Text color={colors.textMuted}>
-            {' '}
-            ({displayItems.length} items)
-          </Text>
+          <Text color={colors.textMuted}> ({displayItems.length} items)</Text>
         </Box>
       )}
 
       {isFiltering && (
         <Box paddingX={2} paddingY={0}>
-          <Text color={colors.highlight}>
-            {`>`}{' '}
-          </Text>
+          <Text color={colors.highlight}>{`>`} </Text>
           <Text color={colors.text} bold>
             {filter}
           </Text>
-          <Text color={colors.textMuted}>
-            {' '}
-            │ Tab to exit filter
-          </Text>
+          <Text color={colors.textMuted}> │ Tab to exit filter</Text>
         </Box>
       )}
 

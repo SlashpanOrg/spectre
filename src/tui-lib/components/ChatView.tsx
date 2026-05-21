@@ -73,16 +73,9 @@ export function ChatView({
         borderStyle="single"
         borderColor={isStreaming ? colors.warning : colors.border}
       >
-        <Text color={colors.highlight}>
-          {'>'}{' '}
-        </Text>
+        <Text color={colors.highlight}>{'>'} </Text>
         <Text color={colors.text}>{inputValue}</Text>
-        {isStreaming && (
-          <Text color={colors.warning}>
-            {' '}
-            │ Ctrl+C to cancel
-          </Text>
-        )}
+        {isStreaming && <Text color={colors.warning}> │ Ctrl+C to cancel</Text>}
       </Box>
     </Box>
   )

@@ -1,9 +1,16 @@
 import OpenAI from 'openai'
-import { AIProvider, CompletionOptions } from './provider.js'
+import { AIProvider, CompletionOptions, ProviderCapabilities } from './provider.js'
 import { logger } from '../utils/logger.js'
 
 export class OpenAIProvider implements AIProvider {
   readonly name = 'openai'
+  readonly capabilities: ProviderCapabilities = {
+    chat: true,
+    streaming: true,
+    embeddings: true,
+    embeddingModel: 'text-embedding-3-small',
+    embeddingDimension: 1536,
+  }
   private client: OpenAI
   private model: string
 
@@ -61,7 +68,7 @@ export class OpenAIProvider implements AIProvider {
 
   async generateEmbedding(text: string): Promise<number[]> {
     const response = await this.client.embeddings.create({
-      model: 'text-embedding-3-small',
+      model: this.capabilities.embeddingModel || 'text-embedding-3-small',
       input: text,
     })
 

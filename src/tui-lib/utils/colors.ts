@@ -63,11 +63,7 @@ export function repeatChar(char: string, count: number): string {
   return char.repeat(count)
 }
 
-export function createProgressBar(
-  current: number,
-  total: number,
-  width: number = 30,
-): string {
+export function createProgressBar(current: number, total: number, width: number = 30): string {
   const percentage = total > 0 ? current / total : 0
   const filledWidth = Math.round(width * percentage)
   const emptyWidth = width - filledWidth

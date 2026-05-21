@@ -35,16 +35,11 @@ export function ProgressIndicator({
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       {label && (
         <Box>
-          <Text color={colors.warning}>
-            {symbols.spinner[spinnerFrame]}{' '}
-          </Text>
+          <Text color={colors.warning}>{symbols.spinner[spinnerFrame]} </Text>
           <Text bold color={colors.text}>
             {label}
           </Text>
-          <Text color={colors.textMuted}>
-            {' '}
-            ({percentage}%)
-          </Text>
+          <Text color={colors.textMuted}> ({percentage}%)</Text>
         </Box>
       )}
 
