@@ -19,7 +19,7 @@ Examples of unacceptable behavior:
 
 ## Enforcement
 
-Instances of abusive behavior may be reported to sp@slashpan.com.
+Instances of abusive behavior may be reported to sr@slashpan.com.
 
 ---
 

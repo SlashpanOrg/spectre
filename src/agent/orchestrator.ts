@@ -186,6 +186,7 @@ After receiving tool results, continue with your response.`,
     }
 
     let response = ''
+    const toolOutputs: string[] = []
     let hasToolCalls = true
 
     while (hasToolCalls) {
@@ -261,6 +262,12 @@ After receiving tool results, continue with your response.`,
             ? await onToolCall(toolCall.name, toolCall.arguments)
             : await this.toolRegistry.execute(toolCall.name, toolCall.arguments)
 
+          toolOutputs.push(
+            toolResult.success
+              ? `${toolCall.name}: ${toolResult.output}`
+              : `${toolCall.name}: Error: ${toolResult.error}`,
+          )
+
           this.conversation.messages.push({
             role: 'tool',
             content: toolResult.success ? toolResult.output : `Error: ${toolResult.error}`,
@@ -280,7 +287,13 @@ After receiving tool results, continue with your response.`,
 
     await this.memoryManager.appendDiaryEntry(`User: ${userInput.substring(0, 100)}...`)
 
-    return response
+    const finalResponse = response.trim() || this.buildEmptyResponseFallback(toolOutputs)
+    const lastMessage = this.conversation.messages[this.conversation.messages.length - 1]
+    if (lastMessage?.role === 'assistant' && !lastMessage.content.trim()) {
+      lastMessage.content = finalResponse
+    }
+
+    return finalResponse
   }
 
   async *processStream(
@@ -403,6 +416,19 @@ After receiving tool results, continue with your response.`,
     return response
       .replace(/\[TOOL_CALL:\s*\w+\]\s*\n[\s\S]*?\n\[END_TOOL_CALL\]/g, '')
       .trim()
+  }
+
+  private buildEmptyResponseFallback(toolOutputs: string[]): string {
+    if (toolOutputs.length === 0) {
+      return 'I did not receive a text response from the model. Please try again or switch models with /model.'
+    }
+
+    const summary = toolOutputs
+      .slice(-3)
+      .map((output) => output.length > 800 ? `${output.slice(0, 800)}...` : output)
+      .join('\n\n')
+
+    return `I completed the tool work, but the model did not return a final text response. Latest tool results:\n\n${summary}`
   }
 
   private updateTokenUsage(): void {

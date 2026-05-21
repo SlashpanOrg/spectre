@@ -4,7 +4,7 @@
 **Status:** Draft  
 **Created:** 2026-05-20  
 **Built by:** Slashpan Technologies Private Limited  
-**Contact:** sp@slashpan.com
+**Contact:** sr@slashpan.com
 
 ## Technical Context
 

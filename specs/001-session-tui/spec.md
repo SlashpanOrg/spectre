@@ -4,7 +4,7 @@
 **Status:** Draft  
 **Created:** 2026-05-20  
 **Built by:** Slashpan Technologies Private Limited  
-**Contact:** sp@slashpan.com
+**Contact:** sr@slashpan.com
 
 ## User Scenarios & Testing
 
@@ -111,7 +111,7 @@ As a user, I want to ask Spectre to perform multi-step tasks (e.g., "index this 
 - **FR-17:** All data MUST be stored locally (no cloud dependencies)
 - **FR-18:** System MUST be runnable via `npm install && spectre`
 - **FR-19:** Session MUST display "Built by Slashpan Technologies Private Limited"
-- **FR-20:** `/about` MUST show contact email sp@slashpan.com
+- **FR-20:** `/about` MUST show contact email sr@slashpan.com
 
 ### Non-Functional Requirements
 
@@ -182,5 +182,5 @@ As a user, I want to ask Spectre to perform multi-step tasks (e.g., "index this 
 
 - [ ] ASCII art octopus on session start
 - [ ] Slashpan Technologies branding visible
-- [ ] Contact email sp@slashpan.com accessible
+- [ ] Contact email sr@slashpan.com accessible
 - [ ] Open source attribution clear

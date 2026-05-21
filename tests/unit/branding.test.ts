@@ -15,7 +15,7 @@ describe('Branding', () => {
     expect(TOOL_NAME).toBe('SPECTRE')
     expect(TAGLINE).toBe('AI Development Intelligence Agent')
     expect(BUILT_BY).toBe('Built by Slashpan Technologies Private Limited')
-    expect(CONTACT_EMAIL).toBe('sp@slashpan.com')
+    expect(CONTACT_EMAIL).toBe('sr@slashpan.com')
     expect(GITHUB_URL).toBe('https://github.com/SlashpanOrg/spectre')
     expect(VERSION).toBe('0.5.0')
   })
@@ -23,7 +23,7 @@ describe('Branding', () => {
   it('should generate welcome message with all branding', () => {
     expect(WELCOME_MESSAGE).toContain('AI Development Intelligence Agent')
     expect(WELCOME_MESSAGE).toContain('Slashpan Technologies Private Limited')
-    expect(WELCOME_MESSAGE).toContain('sp@slashpan.com')
+    expect(WELCOME_MESSAGE).toContain('sr@slashpan.com')
     expect(WELCOME_MESSAGE).toContain('github.com/SlashpanOrg/spectre')
   })
 

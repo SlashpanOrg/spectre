@@ -59,7 +59,7 @@ Commands (inside session):
 
 Keyboard Shortcuts:
   Ctrl+K               Command palette
-  Ctrl+G               Toggle side panel
+  Ctrl+U               Toggle side panel
   Ctrl+C               Cancel streaming
   Ctrl+Q               Quit
 

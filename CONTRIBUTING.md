@@ -42,4 +42,4 @@ Spectre is built with:
 
 ## Contact
 
-sp@slashpan.com
+sr@slashpan.com

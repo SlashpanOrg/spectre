@@ -10,7 +10,7 @@ export const ASCII_ART = `
 export const TOOL_NAME = 'SPECTRE'
 export const TAGLINE = 'AI Development Intelligence Agent'
 export const BUILT_BY = 'Built by Slashpan Technologies Private Limited'
-export const CONTACT_EMAIL = 'sp@slashpan.com'
+export const CONTACT_EMAIL = 'sr@slashpan.com'
 export const GITHUB_URL = 'https://github.com/SlashpanOrg/spectre'
 
 export const VERSION = '0.5.0'
@@ -67,7 +67,7 @@ Keyboard shortcuts:
   Ctrl+C              Interrupt current operation when possible
   Ctrl+Q / Ctrl+D     Exit session
   Ctrl+K              Command palette
-  Ctrl+G              Toggle side panel
+  Ctrl+U              Toggle side panel
   ↑/↓                 Navigate interactive lists
   Tab or /            Filter setup/model lists
   Esc                 Cancel active setup/model flow

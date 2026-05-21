@@ -3,7 +3,7 @@
 **Feature:** 001-session-tui  
 **Generated:** 2026-05-20  
 **Built by:** Slashpan Technologies Private Limited  
-**Contact:** sp@slashpan.com
+**Contact:** sr@slashpan.com
 
 ## Phase 1: Session Foundation (Week 1-2)
 

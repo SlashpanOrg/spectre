@@ -29,7 +29,7 @@ export interface KeyInfo {
 
 export const DEFAULT_KEYBINDINGS: KeyBinding[] = [
   { key: 'k', ctrl: true, action: 'command_palette', description: 'Command palette' },
-  { key: 'g', ctrl: true, action: 'toggle_panel', description: 'Toggle side panel' },
+  { key: 'u', ctrl: true, action: 'toggle_panel', description: 'Toggle side panel' },
   { key: 'l', ctrl: true, action: 'clear', description: 'Clear chat' },
   { key: 'c', ctrl: true, action: 'cancel', description: 'Cancel operation' },
   { key: 'd', ctrl: true, action: 'quit', description: 'Quit' },

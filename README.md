@@ -36,7 +36,7 @@ Run `/setup` inside Spectre to configure your AI provider.
 - **PR review** — AI-powered branch diff analysis
 - **Tech debt detection** — Code quality analysis with health scoring
 - **Documentation generation** — Runbooks, onboarding guides, ADRs
-- **Coding Agent** — Conversational agent with 13 built-in tools
+- **Coding Agent** — Conversational agent with 14 built-in tools
 - **Dynamic Tool Creation** — Agent can generate restart-ready tools when it detects a capability gap
 - **Telegram Gateway** — Optional background gateway for Telegram bot messages
 - **Permission System** — Per-project Allow Once/Always/Decline for destructive operations
@@ -72,7 +72,7 @@ Run `/setup` inside Spectre to configure your AI provider.
 
 ## Agent Tools
 
-The coding agent has 13 built-in tools:
+The coding agent has 14 built-in tools:
 
 | Tool | Description | Permission |
 |------|-------------|------------|
@@ -90,6 +90,28 @@ The coding agent has 13 built-in tools:
 | `analyze_debt` | Technical debt analysis | No |
 | `generate_docs` | Generate documentation | No |
 | `create_tool` | Generate restart-ready dynamic tools | Yes |
+
+## Core Skills
+
+Spectre's core skills are already built into the agent runtime:
+
+| Skill | Built | Backing Capability |
+|-------|-------|--------------------|
+| Conversation-first coding assistance | Yes | `AgentOrchestrator` with persistent session context |
+| File reading and code inspection | Yes | `read_file`, `list_files`, `search_files` |
+| File creation and targeted editing | Yes | `write_file`, `edit_file` with diff preview |
+| Command, test, and debug execution | Yes | `run_command`, `run_tests`, `debug_code` |
+| Repository intelligence | Yes | `index_repo`, `query_codebase` |
+| PR review and technical debt analysis | Yes | `review_pr`, `analyze_debt` |
+| Documentation generation | Yes | `generate_docs` |
+| Dynamic restart-ready tool creation | Yes | `create_tool`, `/tool`, `/tools` |
+| Permission-respecting execution | Yes | Per-project Allow Once/Always/Decline permission store |
+| Model validation and communication adaptation | Yes | Model validator and model capability profiles |
+| Error learning and skill persistence | Yes | Error learner, `SKILLS.MD`, `DIARY.MD` |
+| Agent memory across sessions | Yes | `SOUL.MD`, `IDENTITY.MD`, `INFORMATION.MD`, `PERMISSION.MD`, `DIARY.MD`, `SKILLS.MD` |
+| Session compaction | Yes | Token-threshold compactor |
+| Concurrent sub-agent execution | Yes | `SubAgent` and `SubAgentOrchestrator` |
+| Telegram gateway access | Yes | `spectre gateway start <BOT_TOKEN>` |
 
 ## Dynamic Tools
 
@@ -169,7 +191,7 @@ Complex tasks can be decomposed into parallel sub-tasks. Each sub-agent:
 | Shortcut | Action |
 |----------|--------|
 | `Ctrl+K` | Command palette |
-| `Ctrl+G` | Toggle side panel |
+| `Ctrl+U` | Toggle side panel |
 | `Ctrl+C` | Cancel streaming |
 | `Ctrl+Q` | Quit |
 
@@ -183,4 +205,4 @@ npm test
 
 ---
 
-**MIT License** · Built by **Slashpan Technologies Private Limited** · [sp@slashpan.com](mailto:sp@slashpan.com)
+**MIT License** · Built by **Slashpan Technologies Private Limited** · [sr@slashpan.com](mailto:sr@slashpan.com)

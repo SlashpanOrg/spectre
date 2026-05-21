@@ -2,7 +2,7 @@
   "name": "spectre",
   "version": "0.5.0",
   "description": "AI Development Intelligence Agent — Session-based TUI for codebase institutional memory",
-  "author": "Slashpan Technologies Private Limited <sp@slashpan.com>",
+  "author": "Slashpan Technologies Private Limited <sr@slashpan.com>",
   "license": "MIT",
   "homepage": "https://github.com/SlashpanOrg/spectre",
   "repository": {
@@ -11,7 +11,7 @@
   },
   "bugs": {
     "url": "https://github.com/SlashpanOrg/spectre/issues",
-    "email": "sp@slashpan.com"
+    "email": "sr@slashpan.com"
   },
   "bin": {
     "spectre": "./dist/index.js"

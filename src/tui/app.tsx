@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Box, Text, useApp, useInput } from 'ink'
 import { TextInput } from '@inkjs/ui'
 import {
@@ -28,6 +28,12 @@ import { ToolRegistry } from '../agent/tools/registry.js'
 import { discoverModels, ModelInfo } from '../ai/model-discovery.js'
 import { createSession, SessionStore } from '../session/session-store.js'
 import { logger } from '../utils/logger.js'
+import { TokenBar } from './components/token-bar.js'
+import { TaskTimerDisplay } from './components/task-timer.js'
+
+function clearTerminal(): void {
+  process.stdout.write('\x1b[2J\x1b[3J\x1b[H')
+}
 
 const PROVIDER_OPTIONS = [
   { name: 'openai', label: 'OpenAI', requiresApiKey: true, defaultModel: 'gpt-4o-mini' },
@@ -98,6 +104,16 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     const active = getActiveProvider()
     return active ? active.model : 'none'
   })
+  const [terminalSize, setTerminalSize] = useState(() => ({
+    columns: process.stdout.columns || 120,
+    rows: process.stdout.rows || 40,
+  }))
+  const [tokenStats, setTokenStats] = useState({
+    usedTokens: 0,
+    totalTokens: 0,
+    contextWindow: 128000,
+  })
+  const [activeTask, setActiveTask] = useState<{ label: string; startTime: number } | null>(null)
 
   const [progress, setProgress] = useState<{
     visible: boolean
@@ -108,6 +124,23 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   }>({ visible: false, current: 0, total: 0, label: '' })
 
   const orchestratorRef = useRef<AgentOrchestrator | null>(null)
+
+  useEffect(() => {
+    clearTerminal()
+    const handleResize = () => {
+      setTerminalSize({
+        columns: process.stdout.columns || 120,
+        rows: process.stdout.rows || 40,
+      })
+    }
+
+    process.stdout.on('resize', handleResize)
+    return () => {
+      process.stdout.off('resize', handleResize)
+      clearTerminal()
+    }
+  }, [])
+
   const getOrchestrator = useCallback(async () => {
     if (!orchestratorRef.current) {
       try {
@@ -123,8 +156,6 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
 
   const {
     isStreaming,
-    content: streamingContent,
-    startStream,
     cancelStream,
   } = useStreaming()
 
@@ -150,10 +181,48 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
 
   const updateProviderStatus = useCallback(() => {
     const active = getActiveProvider()
-    setCurrentProvider(active ? active.name : 'none')
-    setCurrentModel(active ? active.model : 'none')
-    orchestratorRef.current = null
+    const nextProvider = active ? active.name : 'none'
+    const nextModel = active ? active.model : 'none'
+
+    setCurrentProvider((prev) => {
+      if (prev !== nextProvider) orchestratorRef.current = null
+      return nextProvider
+    })
+    setCurrentModel((prev) => {
+      if (prev !== nextModel) orchestratorRef.current = null
+      return nextModel
+    })
   }, [])
+
+  const updateAgentStats = useCallback((orchestrator?: AgentOrchestrator | null) => {
+    const active = orchestrator || orchestratorRef.current
+    if (!active) return
+
+    const stats = active.getTokenStats()
+    setTokenStats({
+      usedTokens: stats.currentSession.totalTokens,
+      totalTokens: stats.currentSession.totalTokens,
+      contextWindow: stats.modelContextWindow,
+    })
+  }, [])
+
+  const finishProcessing = useCallback(
+    (orchestrator?: AgentOrchestrator | null) => {
+      updateAgentStats(orchestrator)
+      updateProviderStatus()
+      setActiveTask(null)
+      setIsProcessing(false)
+    },
+    [updateAgentStats, updateProviderStatus],
+  )
+
+  const exitCleanly = useCallback(() => {
+    setIsProcessing(false)
+    setActiveTask(null)
+    clearTerminal()
+    exit()
+    setTimeout(clearTerminal, 0)
+  }, [exit])
 
   const showProgress = useCallback(
     (label: string, current: number, total: number, step?: string) => {
@@ -170,7 +239,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     async (taskDescription: string) => {
       if (!taskDescription.trim()) {
         addMessage('error', 'Usage: /agent <description>')
-        setIsProcessing(false)
+        finishProcessing()
         return
       }
 
@@ -179,9 +248,11 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         const orch = await getOrchestrator()
         if (!orch) {
           addMessage('error', 'No AI provider configured. Run /setup to configure one.')
-          setIsProcessing(false)
+          finishProcessing()
           return
         }
+
+        setActiveTask({ label: 'Agent working', startTime: Date.now() })
 
         const taskMsgId = `msg-${Date.now()}-agent-task`
         setMessages((prev) => [
@@ -197,14 +268,17 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         showProgress(`Agent: ${taskDescription}`, 0, 1, 'Processing...')
 
         const response = await orch.processMessage(taskDescription)
+        const displayResponse = response.trim() || 'Spectre completed the request, but the model did not return a text response.'
 
         hideProgress()
+        updateAgentStats(orch)
 
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === taskMsgId ? { ...m, content: response, role: 'tool' as const } : m,
+            m.id === taskMsgId ? { ...m, content: displayResponse, role: 'assistant' as const } : m,
           ),
         )
+        persistSessionMessage('assistant', displayResponse)
       } catch (error) {
         hideProgress()
         const msg = error instanceof Error ? error.message : String(error)
@@ -212,15 +286,15 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         logger.error('Agent execution failed:', msg)
       }
 
-      updateProviderStatus()
-      setIsProcessing(false)
+      finishProcessing(orchestratorRef.current)
     },
-    [addMessage, getOrchestrator, updateProviderStatus, showProgress, hideProgress],
+    [addMessage, getOrchestrator, showProgress, hideProgress, finishProcessing, updateAgentStats, persistSessionMessage],
   )
 
   const handleCommand = useCallback(
     async (input: string) => {
       setIsProcessing(true)
+      setActiveTask({ label: input.startsWith('/') ? 'Running command' : 'Thinking', startTime: Date.now() })
       addMessage('user', input)
       persistSessionMessage('user', input)
 
@@ -239,13 +313,13 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
               timestamp: new Date(),
             },
           ])
-          setIsProcessing(false)
+          finishProcessing()
           return
         }
 
         if (input === '/model') {
           setView('modelSwitcher')
-          setIsProcessing(false)
+          finishProcessing()
           return
         }
 
@@ -257,14 +331,13 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         const result = await parser.execute(input)
 
         if (result === '__QUIT__') {
-          addMessage('system', 'Goodbye!')
-          setTimeout(() => exit(), 500)
+          exitCleanly()
           return
         }
 
         if (result === '__WIZARD__') {
           setView('setup')
-          setIsProcessing(false)
+          finishProcessing()
           return
         }
 
@@ -272,7 +345,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           const help = parser.getHelp()
           addMessage('tool', help)
           persistSessionMessage('tool', help)
-          setIsProcessing(false)
+          finishProcessing()
           return
         }
 
@@ -289,10 +362,9 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         logger.error('Command execution failed:', msg)
       }
 
-      updateProviderStatus()
-      setIsProcessing(false)
+      finishProcessing(orchestratorRef.current)
     },
-    [parser, addMessage, exit, updateProviderStatus, handleAgentTask, persistSessionMessage],
+    [parser, addMessage, exitCleanly, handleAgentTask, persistSessionMessage, finishProcessing],
   )
 
   const handleAgentQuery = useCallback(
@@ -302,26 +374,29 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         const orch = await getOrchestrator()
         if (!orch) {
           addMessage('error', 'No AI provider configured. Run /setup to configure one.')
-          setIsProcessing(false)
+          finishProcessing()
           return
         }
 
         const streamingMsgId = `msg-${Date.now()}-stream`
+        setActiveTask({ label: 'Spectre thinking', startTime: Date.now() })
         setMessages((prev) => [
           ...prev,
-          { id: streamingMsgId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true },
+          { id: streamingMsgId, role: 'assistant', content: 'Thinking...', timestamp: new Date(), isStreaming: true },
         ])
 
         const response = await orch.processMessage(input)
+        const displayResponse = response.trim() || 'Spectre completed the request, but the model did not return a text response.'
+        updateAgentStats(orch)
 
         setMessages((prev) =>
           prev.map((m) =>
             m.id === streamingMsgId
-              ? { ...m, content: response, role: 'assistant' as const, isStreaming: false }
+              ? { ...m, content: displayResponse, role: 'assistant' as const, isStreaming: false }
               : m,
           ),
         )
-        persistSessionMessage('assistant', response)
+        persistSessionMessage('assistant', displayResponse)
       } catch (error) {
         hideProgress()
         const msg = error instanceof Error ? error.message : String(error)
@@ -329,10 +404,9 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         logger.error('Agent execution failed:', msg)
       }
 
-      updateProviderStatus()
-      setIsProcessing(false)
+      finishProcessing(orchestratorRef.current)
     },
-    [getOrchestrator, addMessage, updateProviderStatus, startStream, streamingContent, persistSessionMessage, showProgress, hideProgress],
+    [getOrchestrator, addMessage, persistSessionMessage, hideProgress, finishProcessing, updateAgentStats],
   )
 
   const handleSubmit = useCallback(
@@ -361,13 +435,12 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   useInput(
     (input, key) => {
       if (input === 'q' && key.ctrl) {
-        addMessage('system', 'Goodbye!')
-        setTimeout(() => exit(), 500)
+        exitCleanly()
       }
       if (input === 'k' && key.ctrl && view === 'chat') {
         setShowCommandPalette((prev) => !prev)
       }
-      if (input === 'g' && key.ctrl && view === 'chat') {
+      if (input === 'u' && key.ctrl && view === 'chat') {
         setShowSidePanel((prev) => !prev)
       }
       if (input === 'c' && key.ctrl && isStreaming) {
@@ -379,9 +452,14 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
 
   const shortcuts = [
     { key: 'Ctrl+K', action: 'commands' },
-    { key: 'Ctrl+G', action: 'panel' },
+    { key: 'Ctrl+U', action: 'panel' },
     { key: 'Ctrl+Q', action: 'quit' },
   ]
+
+  const visibleMessages = useMemo(() => {
+    const maxMessages = Math.max(4, Math.floor((terminalSize.rows - 14) / 4))
+    return messages.slice(-maxMessages)
+  }, [messages, terminalSize.rows])
 
   if (view === 'setup') {
     return (
@@ -396,7 +474,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         }}
         onCancel={() => {
           setView('chat')
-          setIsProcessing(false)
+          finishProcessing()
         }}
       />
     )
@@ -412,7 +490,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         }}
         onCancel={() => {
           setView('chat')
-          setIsProcessing(false)
+          finishProcessing()
         }}
       />
     )
@@ -432,7 +510,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
       title: 'Shortcuts',
       items: [
         { label: 'Ctrl+K', value: 'Command Palette' },
-        { label: 'Ctrl+G', value: 'Toggle Panel' },
+        { label: 'Ctrl+U', value: 'Toggle Panel' },
         { label: 'Ctrl+Q', value: 'Quit' },
         { label: 'Ctrl+C', value: 'Cancel Stream' },
       ],
@@ -442,7 +520,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   const status = isStreaming ? 'streaming' : isProcessing ? 'loading' : 'idle'
 
   return (
-    <Box flexDirection="column" height="100%">
+    <Box flexDirection="column" height={terminalSize.rows} width={terminalSize.columns}>
       <Header
         title="Spectre"
         subtitle="AI Development Intelligence Agent"
@@ -454,28 +532,18 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
         <Box flexDirection="column" flexGrow={1} overflow="hidden">
           <Box flexDirection="column" flexGrow={1} overflow="hidden">
-            {messages.map((msg) => (
-              <Box key={msg.id} flexDirection="column" paddingX={2} paddingY={msg.role === 'system' ? 0 : 1}>
-                {msg.role === 'user' && (
-                  <Text bold color={colors.primary}>You</Text>
-                )}
-                {msg.role === 'assistant' && (
-                  <Box>
-                    <Text bold color={colors.success}>AI</Text>
-                    {msg.isStreaming && <Text color={colors.warning}> ⠋</Text>}
-                  </Box>
-                )}
-                {msg.role === 'tool' && (
-                  <Text color={colors.text}>{msg.content}</Text>
-                )}
-                {msg.role === 'system' && (
-                  <Text color={colors.textMuted} dimColor>{msg.content}</Text>
-                )}
-                {msg.role === 'error' && (
-                  <Text color={colors.error}>✗ {msg.content}</Text>
-                )}
-              </Box>
+            {visibleMessages.map((msg) => (
+              <ChatMessageBox key={msg.id} message={msg} />
             ))}
+          </Box>
+
+          <Box flexDirection="row" justifyContent="space-between" paddingX={2} paddingY={0}>
+            <TokenBar
+              usedTokens={tokenStats.usedTokens}
+              totalTokens={tokenStats.totalTokens}
+              contextWindow={tokenStats.contextWindow}
+            />
+            {activeTask && <TaskTimerDisplay startTime={activeTask.startTime} label={activeTask.label} />}
           </Box>
 
           <ProgressIndicator
@@ -525,6 +593,40 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         onClose={() => setShowCommandPalette(false)}
         visible={showCommandPalette}
       />
+    </Box>
+  )
+}
+
+const ChatMessageBox: React.FC<{ message: AppMessage }> = ({ message }) => {
+  const colors = defaultTheme.colors
+  const roleConfig = (() => {
+    switch (message.role) {
+      case 'user':
+        return { label: 'You', color: colors.primary }
+      case 'assistant':
+        return { label: 'Spectre', color: colors.success }
+      case 'tool':
+        return { label: 'Tool', color: colors.info }
+      case 'error':
+        return { label: 'Error', color: colors.error }
+      default:
+        return { label: 'System', color: colors.textMuted }
+    }
+  })()
+
+  const content = message.content.trim() || (message.isStreaming ? 'Thinking...' : 'No response text returned.')
+
+  return (
+    <Box flexDirection="column" paddingX={1} paddingY={0}>
+      <Box flexDirection="column" borderStyle="round" borderColor={roleConfig.color} paddingX={1}>
+        <Box>
+          <Text bold color={roleConfig.color}>{roleConfig.label}</Text>
+          {message.isStreaming && <Text color={colors.warning}> thinking</Text>}
+        </Box>
+        <Text color={message.role === 'system' ? colors.textMuted : colors.text} wrap="wrap">
+          {content}
+        </Text>
+      </Box>
     </Box>
   )
 }

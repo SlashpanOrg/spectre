@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Please report security vulnerabilities to sp@slashpan.com.
+Please report security vulnerabilities to sr@slashpan.com.
 
 ## Security Measures
 
