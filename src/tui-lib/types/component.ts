@@ -4,14 +4,6 @@ export interface BaseProps {
   theme?: Theme
 }
 
-export interface LayoutProps extends BaseProps {
-  header: React.ReactNode
-  statusBar: React.ReactNode
-  sidePanel?: React.ReactNode
-  showSidePanel?: boolean
-  children: React.ReactNode
-}
-
 export interface HeaderProps extends BaseProps {
   title: string
   subtitle?: string
@@ -117,26 +109,3 @@ export interface TextInputProps extends BaseProps {
   suggestions?: string[]
   autoFocus?: boolean
 }
-
-export interface AppState {
-  provider: string
-  model: string
-  status: 'idle' | 'loading' | 'error' | 'streaming'
-  messages: ChatMessage[]
-  showSidePanel: boolean
-  showCommandPalette: boolean
-  commands: CommandDefinition[]
-  sidePanelSections: PanelSection[]
-}
-
-export type AppAction =
-  | { type: 'SET_PROVIDER'; provider: string }
-  | { type: 'SET_MODEL'; model: string }
-  | { type: 'SET_STATUS'; status: AppState['status'] }
-  | { type: 'ADD_MESSAGE'; message: ChatMessage }
-  | { type: 'UPDATE_STREAMING'; content: string }
-  | { type: 'TOGGLE_SIDE_PANEL' }
-  | { type: 'TOGGLE_COMMAND_PALETTE' }
-  | { type: 'SET_COMMANDS'; commands: CommandDefinition[] }
-  | { type: 'SET_SIDE_PANEL_SECTIONS'; sections: PanelSection[] }
-  | { type: 'CLEAR_MESSAGES' }

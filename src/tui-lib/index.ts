@@ -1,5 +1,3 @@
-export { App } from './components/App.js'
-export { Layout } from './components/Layout.js'
 export { Header } from './components/Header.js'
 export { StatusBar } from './components/StatusBar.js'
 export { SidePanel } from './components/SidePanel.js'
@@ -12,10 +10,8 @@ export { ProgressIndicator } from './components/ProgressIndicator.js'
 export { Spinner } from './components/Spinner.js'
 export { TextInput } from './components/TextInput.js'
 
-export { useTerminalSize } from './hooks/useTerminalSize.js'
 export { useKeyboard } from './hooks/useKeyboard.js'
 export { useScroll } from './hooks/useScroll.js'
-export { useStreaming } from './hooks/useStreaming.js'
 
 export { fuzzyMatch, fuzzyFilter, highlightMatches } from './utils/fuzzy.js'
 export { highlightCode, detectLanguage } from './utils/syntax.js'
@@ -36,13 +32,10 @@ export type { Theme, ThemeColors, ThemeSpacing } from './types/theme.js'
 export { defaultTheme } from './types/theme.js'
 
 export type {
-  AppState,
-  AppAction,
   ChatMessage,
   CommandDefinition,
   PanelSection,
   PanelItem,
-  LayoutProps,
   HeaderProps,
   StatusBarProps,
   SidePanelProps,
