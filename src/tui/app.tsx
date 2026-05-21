@@ -631,7 +631,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
           startModelDiscovery()
         } else if (key.backspace) {
           setInputBuffer((prev) => prev.slice(0, -1))
-        } else if (input.length === 1 && !key.ctrl && !key.meta) {
+        } else if (!key.ctrl && !key.meta) {
           setInputBuffer((prev) => prev + input)
         }
       } else if (step === 'ollamaUrl') {
@@ -640,7 +640,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
           startModelDiscovery()
         } else if (key.backspace) {
           setInputBuffer((prev) => prev.slice(0, -1))
-        } else if (input.length === 1 && !key.ctrl && !key.meta) {
+        } else if (!key.ctrl && !key.meta) {
           setInputBuffer((prev) => prev + input)
         }
       } else if (step === 'complete') {
@@ -844,10 +844,8 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
         </Text>
         <Box marginTop={1}>
           <Text color={colors.highlight}>{'> '} </Text>
-          <Text>
-            {step === 'apiKey'
-              ? '•'.repeat(inputBuffer.length)
-              : inputBuffer || 'http://localhost:11434'}
+          <Text color={colors.text}>
+            {inputBuffer || (step === 'apiKey' ? 'Paste or type your API key' : 'http://localhost:11434')}
           </Text>
         </Box>
         <Box marginTop={1}>
