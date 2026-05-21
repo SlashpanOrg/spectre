@@ -11,6 +11,7 @@ import { ErrorLearner } from './error-learner.js'
 import { ClarificationHandler, ClarificationCallback } from './clarification-handler.js'
 import { modelProfileManager } from '../ai/model-profiles.js'
 import { markModelUnavailable } from '../ai/model-discovery.js'
+import { executeWithRetry } from './retry-handler.js'
 import { logger } from '../utils/logger.js'
 
 export interface ConversationMessage {
@@ -259,8 +260,14 @@ After receiving tool results, continue with your response.`,
           }
 
           const toolResult = onToolCall
-            ? await onToolCall(toolCall.name, toolCall.arguments)
-            : await this.toolRegistry.execute(toolCall.name, toolCall.arguments)
+            ? await executeWithRetry(`tool:${toolCall.name}`, () =>
+                onToolCall(toolCall.name, toolCall.arguments),
+                { maxAttempts: 3 },
+              )
+            : await executeWithRetry(`tool:${toolCall.name}`, () =>
+                this.toolRegistry.execute(toolCall.name, toolCall.arguments),
+                { maxAttempts: 3 },
+              )
 
           toolOutputs.push(
             toolResult.success
