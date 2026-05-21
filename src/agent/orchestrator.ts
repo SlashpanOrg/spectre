@@ -174,4 +174,20 @@ Return ONLY valid JSON.`
 
     return `Task completed: ${completedSteps}/${totalSteps} steps successful.`
   }
+
+  async *queryStream(
+    userInput: string,
+    systemPrompt?: string,
+  ): AsyncIterable<string> {
+    const prompt = `You are Spectre, an AI development intelligence agent.
+Be concise and helpful. Focus on code analysis, architecture, and development tasks.
+
+User: ${userInput}`
+
+    yield* this.provider.generateCompletionStream(prompt, {
+      temperature: 0.7,
+      maxTokens: 4096,
+      systemPrompt,
+    })
+  }
 }

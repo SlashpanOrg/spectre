@@ -8,8 +8,10 @@ Spectre is a session-based TUI AI developer tool that helps you understand, revi
 
 ## Features
 
-- **Session-based TUI**: Single REPL-like session, no CLI subcommands
-- **Multi-provider AI**: OpenAI, Anthropic, Ollama with dynamic model discovery
+- **Full-screen TUI**: React-based terminal UI with Ink framework
+- **Interactive setup wizard**: Scrollable, searchable provider/model selection
+- **Streaming AI responses**: Token-by-token response rendering
+- **Multi-provider AI**: OpenAI, Anthropic, Google Gemini, Ollama with dynamic model discovery
 - **Codebase indexing**: Git history → vector embeddings → semantic search
 - **PR review**: AI-powered branch diff analysis
 - **Tech debt detection**: Code quality analysis with health scoring
@@ -33,6 +35,53 @@ npm start
 docker compose up spectre
 ```
 
+## TUI Architecture
+
+Spectre uses a React-based terminal UI built with [Ink](https://github.com/vadimdemedes/ink):
+
+```
+┌─────────────────────────────────────────────────┐
+│                    Spectre TUI                    │
+├─────────────────────────────────────────────────┤
+│  Header (branding, provider, model)              │
+├─────────────────────────────────────────────────┤
+│                                                   │
+│  Chat View (messages, streaming responses)        │
+│  ┌─────────────────────────────────────────────┐ │
+│  │ User: /index this repo                       │ │
+│  │ AI: ✓ Indexed 42 commits...                  │ │
+│  │                                              │ │
+│  └─────────────────────────────────────────────┘ │
+│                                                   │
+├─────────────────────────────────────────────────┤
+│  Setup Wizard (when /setup is triggered)         │
+│  ▸ OpenAI                                        │
+│    Anthropic                                     │
+│    Google Gemini                                 │
+│    Ollama                                        │
+├─────────────────────────────────────────────────┤
+│  Status Bar [provider:model] Ctrl+Q to quit      │
+└─────────────────────────────────────────────────┘
+```
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Q` | Quit |
+| `↑/↓` | Navigate command history |
+| `Tab` | Autocomplete |
+| `Esc` | Cancel operation |
+
+### Setup Wizard
+
+When you run `/setup`, an interactive wizard appears:
+
+1. **Select Provider** - Arrow keys to navigate, Enter to select
+2. **Enter API Key** - Type your key (encrypted locally)
+3. **Select Model** - Scrollable list with fuzzy search (press `/` or `Tab` to filter)
+4. **Complete** - Provider configured!
+
 ## Commands
 
 | Command | Description |
@@ -54,15 +103,15 @@ docker compose up spectre
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                   Session (REPL)                 │
+│                   Spectre TUI (Ink/React)         │
 ├──────────┬──────────┬──────────┬────────────────┤
 │ Commands │   AI     │  Tools   │    Agent       │
 ├──────────┼──────────┼──────────┼────────────────┤
 │ /setup   │ OpenAI   │ Index    │ Orchestrator   │
 │ /model   │ Anthropic│ Query    │ Planner        │
-│ /review  │ Ollama   │ Review   │ Interrupt      │
-│ /debt    │          │ Debt     │ Clarification  │
-│ /docs    │          │ Docs     │                │
+│ /review  │ Gemini   │ Review   │ Streaming      │
+│ /debt    │ Ollama   │ Debt     │ Interrupt      │
+│ /docs    │          │ Docs     │ Clarification  │
 └──────────┴──────────┴──────────┴────────────────┘
 ┌─────────────────────────────────────────────────┐
 │                 Storage Layer                     │
