@@ -112,9 +112,9 @@ export class Session {
       this.state.currentProvider !== 'none'
         ? ` [${this.state.currentProvider}:${this.state.currentModel}]`
         : ''
-    this.rl.write(`\r> `)
+    process.stdout.write(`\r> `)
     if (providerTag) {
-      this.rl.write('')
+      process.stdout.write('')
     }
   }
 

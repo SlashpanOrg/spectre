@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { Session } from './session/session.js'
+import React from 'react'
+import { render } from 'ink'
 import { CommandParser } from './commands/parser.js'
 import { helpCommand } from './commands/help.js'
 import { aboutCommand } from './commands/about.js'
@@ -15,6 +16,7 @@ import {
   docsCommand,
 } from './commands/tools.js'
 import { agentCommand } from './commands/agent.js'
+import { SpectreApp } from './tui/app.js'
 
 function main(): void {
   const parser = new CommandParser()
@@ -33,11 +35,7 @@ function main(): void {
   parser.register(docsCommand)
   parser.register(agentCommand)
 
-  const session = new Session(parser)
-  session.start().catch((error) => {
-    console.error('Fatal error:', error)
-    process.exit(1)
-  })
+  render(<SpectreApp parser={parser} />)
 }
 
 main()
