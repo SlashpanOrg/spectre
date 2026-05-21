@@ -75,6 +75,8 @@ function main(): void {
     process.exit(0)
   }
 
+  process.stdout.write('\x1Bc')
+
   const parser = new CommandParser()
 
   parser.register(helpCommand)

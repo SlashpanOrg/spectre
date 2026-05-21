@@ -13,7 +13,7 @@ export const BUILT_BY = 'Built by Slashpan Technologies Private Limited'
 export const CONTACT_EMAIL = 'sp@slashpan.com'
 export const GITHUB_URL = 'https://github.com/SlashpanOrg/spectre'
 
-export const VERSION = '0.2.0'
+export const VERSION = '0.3.0'
 
 export const WELCOME_MESSAGE = `${ASCII_ART}
 v${VERSION}

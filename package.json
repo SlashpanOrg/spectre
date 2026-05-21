@@ -1,6 +1,6 @@
 {
   "name": "spectre",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AI Development Intelligence Agent — Session-based TUI for codebase institutional memory",
   "author": "Slashpan Technologies Private Limited <sp@slashpan.com>",
   "license": "MIT",

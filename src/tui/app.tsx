@@ -12,7 +12,7 @@ import {
   useStreaming,
   defaultTheme,
 } from '../tui-lib/index.js'
-import { WELCOME_MESSAGE } from '../utils/branding.js'
+import { WELCOME_MESSAGE, VERSION } from '../utils/branding.js'
 import { CommandParser, CommandDefinition } from '../commands/parser.js'
 import {
   getActiveProvider,
@@ -516,7 +516,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
       <Header
         title="Spectre"
         subtitle="AI Development Intelligence Agent"
-        version="0.1.0"
+        version={VERSION}
         provider={currentProvider}
         model={currentModel}
       />
