@@ -1,3 +1,12 @@
+export interface CommandDefinition {
+  id: string
+  name: string
+  description: string
+  shortcut?: string
+  category?: string
+  execute: () => void | Promise<void>
+}
+
 export interface CommandHandler {
   name: string
   description: string
@@ -57,6 +66,10 @@ export class CommandParser {
       lines.push(`  /${name.padEnd(12)} ${handler.description}`)
     }
     return lines.join('\n')
+  }
+
+  getCommands(): CommandHandler[] {
+    return Array.from(this.commands.values())
   }
 
   private getSuggestions(name: string): string[] {

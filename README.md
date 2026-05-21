@@ -8,9 +8,12 @@ Spectre is a session-based TUI AI developer tool that helps you understand, revi
 
 ## Features
 
-- **Full-screen TUI**: React-based terminal UI with Ink framework
-- **Interactive setup wizard**: Scrollable, searchable provider/model selection
-- **Streaming AI responses**: Token-by-token response rendering
+- **Full-screen TUI**: React-based terminal UI with Ink framework and shared component library
+- **Interactive setup wizard**: Scrollable, searchable provider/model selection with `SelectableList`
+- **Streaming AI responses**: Token-by-token response rendering with `useStreaming` hook
+- **Command Palette**: VS Code-style command discovery with `Ctrl+K`
+- **Context Side Panel**: Toggleable panel with session info and shortcuts (`Ctrl+G`)
+- **Progress Indicators**: Animated progress bars for long-running operations
 - **Multi-provider AI**: OpenAI, Anthropic, Google Gemini, Ollama with dynamic model discovery
 - **Codebase indexing**: Git history → vector embeddings → semantic search
 - **PR review**: AI-powered branch diff analysis
@@ -18,91 +21,185 @@ Spectre is a session-based TUI AI developer tool that helps you understand, revi
 - **Documentation generation**: Runbooks, onboarding guides, ADRs, architecture docs
 - **Agentic workflows**: Multi-step task planning and execution
 
-## Quick Start
+## Installation
+
+### Quick Install (Recommended)
 
 ```bash
-# Install
-npm install -g spectre
+curl -fsSL https://raw.githubusercontent.com/SlashpanOrg/spectre/main/install.sh | bash
+```
 
-# Or run from source
+That's it. Spectre will be available globally as `spectre`.
+
+### Update
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SlashpanOrg/spectre/main/install.sh | bash
+```
+
+### Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SlashpanOrg/spectre/main/uninstall.sh | bash
+```
+
+### Alternative Methods
+
+**npm (global):**
+```bash
+npm install -g spectre
+```
+
+**From source:**
+```bash
 git clone https://github.com/SlashpanOrg/spectre.git
 cd spectre
 npm install
 npm run build
 npm start
+```
 
-# Or use Docker
+**Docker:**
+```bash
 docker compose up spectre
 ```
 
+## Quick Start
+
+```bash
+spectre              # Launch Spectre
+spectre --version    # Show version
+```
+
+Run `/setup` inside Spectre to configure your AI provider.
+
 ## TUI Architecture
 
-Spectre uses a React-based terminal UI built with [Ink](https://github.com/vadimdemedes/ink):
+Spectre uses a React-based terminal UI built with [Ink](https://github.com/vadimdemedes/ink) and a shared component library (`@slashpan/tui`):
 
 ```
-┌─────────────────────────────────────────────────┐
-│                    Spectre TUI                    │
-├─────────────────────────────────────────────────┤
-│  Header (branding, provider, model)              │
-├─────────────────────────────────────────────────┤
-│                                                   │
-│  Chat View (messages, streaming responses)        │
-│  ┌─────────────────────────────────────────────┐ │
-│  │ User: /index this repo                       │ │
-│  │ AI: ✓ Indexed 42 commits...                  │ │
-│  │                                              │ │
-│  └─────────────────────────────────────────────┘ │
-│                                                   │
-├─────────────────────────────────────────────────┤
-│  Setup Wizard (when /setup is triggered)         │
-│  ▸ OpenAI                                        │
-│    Anthropic                                     │
-│    Google Gemini                                 │
-│    Ollama                                        │
-├─────────────────────────────────────────────────┤
-│  Status Bar [provider:model] Ctrl+Q to quit      │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  Header                                                              │
+│  Spectre v0.1.0                          Provider: openai            │
+│  AI Development Intelligence Agent       Model: gpt-4o-mini          │
+├──────────────────────────────────────────────────────────┬──────────┤
+│  Chat View                                               │ Side     │
+│                                                          │ Panel    │
+│  You                                                     │          │
+│  /index this repo                                        │ Session  │
+│                                                          │ ID: abc  │
+│  AI ⠋                                                    │ Provider │
+│  Streaming response appears here token-by-token...       │ Model    │
+│                                                          │          │
+│  ┌────────────────────────────────────────────────────┐  │ Shortcuts│
+│  │ ProgressIndicator                                  │  │ Ctrl+K   │
+│  │ ████████████░░░░░░░░░░░░░░░░░░░░ 45%              │  │ Ctrl+G   │
+│  │ Indexing: 45/100 commits                           │  │ Ctrl+Q   │
+│  └────────────────────────────────────────────────────┘  │          │
+│                                                          │          │
+│  > Enter command or question... │ Ctrl+C to cancel       │          │
+├──────────────────────────────────────────────────────────┴──────────┤
+│  Status Bar                                                          │
+│  ● Streaming │ openai/gpt-4o-mini │ Ctrl+K commands │ Ctrl+G panel  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+### TUI Component Library
+
+Spectre includes a shared component library at `src/tui-lib/` with 11 components, 3 hooks, and utilities:
+
+**Components:**
+- `Header` - Top bar with branding, provider, and model info
+- `StatusBar` - Bottom bar with status indicator and keyboard shortcuts
+- `SidePanel` - Toggleable context panel with sections
+- `SelectableList` - Scrollable, searchable list with fuzzy filtering
+- `ChatView` - Message display with streaming support
+- `Message` - Individual message renderer with code block detection
+- `CodeBlock` - Syntax-highlighted code blocks
+- `CommandPalette` - Modal command palette (Ctrl+K)
+- `ProgressIndicator` - Animated progress bar with spinner
+- `Spinner` - Loading animation
+- `TextInput` - Enhanced input with autocomplete suggestions
+
+**Hooks:**
+- `useKeyboard` - Unified keyboard event handling
+- `useScroll` - Scroll position and viewport management
+- `useStreaming` - AI response streaming with cancel support
+
+**Utilities:**
+- `fuzzyMatch`, `fuzzyFilter`, `highlightMatches` - Fuzzy search
+- `highlightCode`, `detectLanguage` - Syntax highlighting
+- Color utilities with theme system
 
 ### Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+Q` | Quit |
-| `↑/↓` | Navigate command history |
-| `Tab` | Autocomplete |
-| `Esc` | Cancel operation |
+| `Ctrl+Q` | Quit session |
+| `Ctrl+K` | Toggle command palette |
+| `Ctrl+G` | Toggle side panel |
+| `Ctrl+C` | Cancel streaming response |
+| `↑/↓` | Navigate lists and command history |
+| `Tab` | Autocomplete / Start filtering |
+| `/` | Start filtering in lists |
+| `Esc` | Cancel operation / Clear filter |
+
+### Command Palette
+
+Press `Ctrl+K` to open the command palette. Type to filter commands by name or description, then press `Enter` to execute. All registered slash commands are available.
+
+### Side Panel
+
+Press `Ctrl+G` to toggle the side panel. Shows:
+- Current session ID, provider, and model
+- Message count
+- Available keyboard shortcuts
 
 ### Setup Wizard
 
-When you run `/setup`, an interactive Hermes-like wizard appears:
+When you run `/setup`, an interactive wizard appears using `SelectableList`:
 
-1. **Select Provider** - Arrow keys to navigate, Enter to select
-2. **Enter API Key** - Type your key; the TUI masks it and stores it encrypted locally
-3. **Select Model** - Scrollable list with fuzzy search (press `/` or `Tab` to filter)
-4. **Complete** - Provider configured, with next-step hints for `/model` and `/agent`
+1. **Select Provider** - Scrollable list with arrow key navigation
+2. **Enter API Key** - Masked input (encrypted locally)
+3. **Select Model** - Dynamic model discovery with fuzzy search (press `/` or `Tab` to filter)
+4. **Complete** - Provider configured, with next-step hints
 
 ### Model Switching
 
-Use `/model` to open an interactive model switcher for the active provider:
+Use `/model` to open an interactive model switcher:
 
-- It discovers models from the provider when possible
-- It falls back to the current/default model when discovery is unavailable
-- Use `↑/↓` to navigate, `/` or `Tab` to filter, `Enter` to switch, `Esc` to cancel
-- You can still switch directly with `/model <name>`
+- Dynamically discovers models from the active provider
+- Falls back to curated list when API is unreachable
+- Scrollable list with fuzzy filtering
+- Shows current active model indicator
+
+### Streaming AI Responses
+
+AI responses stream token-by-token using the `useStreaming` hook:
+
+- Real-time token rendering as they arrive
+- Streaming indicator (⠋) shown in chat
+- `Ctrl+C` cancels streaming gracefully
+- Progress indicator shown during planning phase
+
+### Progress Indicators
+
+Long-running operations show animated progress:
+
+- `/index` - Shows commit count and percentage
+- Agent tasks - Shows step completion progress
+- Model discovery - Shows spinner during API calls
 
 ### Agent Task Assignment
 
-Use `/agent <task>` to assign a multi-step workflow to Spectre. The TUI now keeps a single task card updated with:
+Use `/agent <task>` to assign multi-step workflows:
 
-- Assigned task description
-- Planning/running/completed/failed status
-- Completed step count
-- Current step or failure reason
-- Final step summary
+- Task card updates with planning/running/completed/failed status
+- Progress indicator shows step completion
+- Current step description displayed
+- Final summary with all steps
 
-Agent-planned tools now dispatch through Spectre's real command handlers instead of placeholder strings:
-
+Agent-planned tools dispatch through Spectre's real command handlers:
 - `index` → `/index`
 - `query` → `/query`
 - `review` → `/review`
@@ -111,13 +208,13 @@ Agent-planned tools now dispatch through Spectre's real command handlers instead
 
 ### Sessions
 
-Spectre creates a saved TUI session on launch and persists user/tool messages under the Spectre config directory. Use:
+Spectre creates a saved TUI session on launch and persists messages under the Spectre config directory:
 
-- `/new [title]` to start a fresh saved session
-- `/sessions` to list recent sessions
-- `/resume <session-id>` to show recent messages from a session
+- `/new [title]` - Start a fresh saved session
+- `/sessions` - List recent sessions
+- `/resume <session-id>` - Show recent messages from a session
 
-The status bar shows both the active provider/model and current session id.
+The status bar shows the active provider/model and session info.
 
 ## Commands
 
@@ -143,23 +240,23 @@ The status bar shows both the active provider/model and current session id.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   Spectre TUI (Ink/React)         │
-├──────────┬──────────┬──────────┬────────────────┤
-│ Commands │   AI     │  Tools   │    Agent       │
-├──────────┼──────────┼──────────┼────────────────┤
-│ /setup   │ OpenAI   │ Index    │ Orchestrator   │
-│ /model   │ Anthropic│ Query    │ Planner        │
-│ /review  │ Gemini   │ Review   │ Streaming      │
-│ /debt    │ Ollama   │ Debt     │ Interrupt      │
-│ /docs    │          │ Docs     │ Clarification  │
-└──────────┴──────────┴──────────┴────────────────┘
-┌─────────────────────────────────────────────────┐
-│                 Storage Layer                     │
-├──────────────────┬──────────────────────────────┤
-│   Qdrant         │   SQLite                      │
-│   (vectors)      │   (metadata, history)         │
-└──────────────────┴──────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                   Spectre TUI (Ink/React)                 │
+├──────────┬──────────┬──────────┬──────────┬──────────────┤
+│ Commands │   AI     │  Tools   │  Agent   │  TUI Lib     │
+├──────────┼──────────┼──────────┼──────────┼──────────────┤
+│ /setup   │ OpenAI   │ Index    │ Orchestr │ SelectableL. │
+│ /model   │ Anthropic│ Query    │ Planner  │ ChatView     │
+│ /review  │ Gemini   │ Review   │ Stream   │ CmdPalette   │
+│ /debt    │ Ollama   │ Debt     │ Interrup │ ProgressInd. │
+│ /docs    │          │ Docs     │ Clarify  │ StatusBar    │
+└──────────┴──────────┴──────────┴──────────┴──────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                 Storage Layer                             │
+├──────────────────┬──────────────────────────────────────┤
+│   Qdrant         │   SQLite                              │
+│   (vectors)      │   (metadata, history, sessions)       │
+└──────────────────┴──────────────────────────────────────┘
 ```
 
 ## Development
@@ -182,6 +279,31 @@ npm run lint
 
 # Format
 npm run format
+```
+
+### Project Structure
+
+```
+spectre/
+├── src/
+│   ├── index.tsx                    # Entry point (renders SpectreApp)
+│   ├── tui/
+│   │   └── app.tsx                  # Main TUI app component
+│   ├── tui-lib/                     # Shared TUI component library
+│   │   ├── components/              # 11 React components
+│   │   ├── hooks/                   # 3 custom hooks
+│   │   ├── utils/                   # Fuzzy search, syntax, colors
+│   │   └── types/                   # TypeScript type definitions
+│   ├── commands/                    # Slash command handlers
+│   ├── agent/                       # Agent orchestrator and tool runner
+│   ├── ai/                          # AI provider abstraction layer
+│   ├── tools/                       # Tool executors (index, query, etc.)
+│   ├── storage/                     # Vector store and metadata store
+│   └── utils/                       # Config, branding, logger
+├── tests/
+│   ├── unit/                        # Unit tests (12 test files)
+│   └── tui/                         # TUI component tests (8 test files)
+└── ...
 ```
 
 ## Configuration

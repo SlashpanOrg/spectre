@@ -1,8 +1,19 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useMemo } from 'react'
 import { Box, Text, useApp, useInput } from 'ink'
 import { TextInput } from '@inkjs/ui'
+import {
+  Header,
+  StatusBar,
+  SidePanel,
+  SelectableList,
+  CommandPalette,
+  ProgressIndicator,
+  Spinner,
+  useStreaming,
+  defaultTheme,
+} from '../tui-lib/index.js'
 import { WELCOME_MESSAGE } from '../utils/branding.js'
-import { CommandParser } from '../commands/parser.js'
+import { CommandParser, CommandDefinition } from '../commands/parser.js'
 import {
   getActiveProvider,
   addProvider,
@@ -35,13 +46,15 @@ const PROVIDER_OPTIONS = [
   { name: 'ollama', label: 'Ollama', requiresApiKey: false, defaultModel: 'llama3' },
 ]
 
+type AppView = 'chat' | 'setup' | 'modelSwitcher'
 type WizardStep = 'provider' | 'apiKey' | 'ollamaUrl' | 'model' | 'complete'
 
-interface Message {
+interface AppMessage {
   id: string
-  type: 'user' | 'system' | 'tool' | 'error' | 'welcome' | 'progress'
+  role: 'user' | 'assistant' | 'system' | 'tool' | 'error'
   content: string
   timestamp: Date
+  isStreaming?: boolean
 }
 
 interface SpectreAppProps {
@@ -50,11 +63,19 @@ interface SpectreAppProps {
 
 export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
   const { exit } = useApp()
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 'welcome', type: 'welcome', content: WELCOME_MESSAGE, timestamp: new Date() },
+  const colors = defaultTheme.colors
+
+  const [view, setView] = useState<AppView>('chat')
+  const [messages, setMessages] = useState<AppMessage[]>([
+    {
+      id: 'welcome',
+      role: 'system',
+      content: WELCOME_MESSAGE,
+      timestamp: new Date(),
+    },
     {
       id: 'hint',
-      type: 'system',
+      role: 'system',
       content: 'Type /help for available commands or just ask a question.',
       timestamp: new Date(),
     },
@@ -67,12 +88,24 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     return session.id
   })
   const [isProcessing, setIsProcessing] = useState(false)
-  const [showWizard, setShowWizard] = useState(false)
-  const [showModelSwitcher, setShowModelSwitcher] = useState(false)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [showSidePanel, setShowSidePanel] = useState(false)
   const [currentProvider, setCurrentProvider] = useState(() => {
     const active = getActiveProvider()
-    return active ? `${active.name}:${active.model}` : 'none'
+    return active ? active.name : 'none'
   })
+  const [currentModel, setCurrentModel] = useState(() => {
+    const active = getActiveProvider()
+    return active ? active.model : 'none'
+  })
+
+  const [progress, setProgress] = useState<{
+    visible: boolean
+    current: number
+    total: number
+    label: string
+    step?: string
+  }>({ visible: false, current: 0, total: 0, label: '' })
 
   const orchestratorRef = useRef<AgentOrchestrator | null>(null)
   const getOrchestrator = useCallback(() => {
@@ -86,10 +119,17 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     return orchestratorRef.current
   }, [])
 
-  const addMessage = useCallback((type: Message['type'], content: string) => {
+  const {
+    isStreaming,
+    content: streamingContent,
+    startStream,
+    cancelStream,
+  } = useStreaming()
+
+  const addMessage = useCallback((role: AppMessage['role'], content: string) => {
     setMessages((prev) => [
       ...prev,
-      { id: `msg-${Date.now()}-${Math.random()}`, type, content, timestamp: new Date() },
+      { id: `msg-${Date.now()}-${Math.random()}`, role, content, timestamp: new Date() },
     ])
   }, [])
 
@@ -108,8 +148,20 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
 
   const updateProviderStatus = useCallback(() => {
     const active = getActiveProvider()
-    setCurrentProvider(active ? `${active.name}:${active.model}` : 'none')
+    setCurrentProvider(active ? active.name : 'none')
+    setCurrentModel(active ? active.model : 'none')
     orchestratorRef.current = null
+  }, [])
+
+  const showProgress = useCallback(
+    (label: string, current: number, total: number, step?: string) => {
+      setProgress({ visible: true, current, total, label, step })
+    },
+    [],
+  )
+
+  const hideProgress = useCallback(() => {
+    setProgress((prev) => ({ ...prev, visible: false }))
   }, [])
 
   const handleAgentTask = useCallback(
@@ -134,7 +186,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           ...prev,
           {
             id: taskMsgId,
-            type: 'progress',
+            role: 'system',
             content: `Assigned to Spectre\nTask: ${taskDescription}\nStatus: planning...`,
             timestamp: new Date(),
           },
@@ -146,6 +198,14 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           const runningIndex = t.steps.findIndex((s) => s.status === 'running')
           const running = runningIndex >= 0 ? t.steps[runningIndex] : undefined
           const failed = t.steps.find((s) => s.status === 'failed')
+
+          showProgress(
+            `Agent: ${taskDescription}`,
+            completed,
+            total,
+            running ? `Current: ${running.description}` : failed ? `Failed: ${failed.error}` : undefined,
+          )
+
           const details = [
             'Assigned to Spectre',
             `Task: ${taskDescription}`,
@@ -163,6 +223,8 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           )
         })
 
+        hideProgress()
+
         const stepLines = task.steps.map((step) => {
           const icon = step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : '○'
           return `${icon} ${step.description} (${step.tool})${step.error ? `\n   Error: ${step.error}` : ''}`
@@ -177,10 +239,11 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
 
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === taskMsgId ? { ...m, content: summary.join('\n'), type: 'tool' as const } : m,
+            m.id === taskMsgId ? { ...m, content: summary.join('\n'), role: 'tool' as const } : m,
           ),
         )
       } catch (error) {
+        hideProgress()
         const msg = error instanceof Error ? error.message : String(error)
         addMessage('error', `Agent failed: ${msg}`)
         logger.error('Agent execution failed:', msg)
@@ -189,7 +252,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
       updateProviderStatus()
       setIsProcessing(false)
     },
-    [addMessage, getOrchestrator, updateProviderStatus],
+    [addMessage, getOrchestrator, updateProviderStatus, showProgress, hideProgress],
   )
 
   const handleCommand = useCallback(
@@ -205,10 +268,10 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           new SessionStore().save(session)
           setSessionId(session.id)
           setMessages([
-            { id: 'welcome', type: 'welcome', content: WELCOME_MESSAGE, timestamp: new Date() },
+            { id: 'welcome', role: 'system', content: WELCOME_MESSAGE, timestamp: new Date() },
             {
               id: 'hint',
-              type: 'system',
+              role: 'system',
               content: `Started ${session.id}. Type /help for commands.`,
               timestamp: new Date(),
             },
@@ -218,7 +281,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         }
 
         if (input === '/model') {
-          setShowModelSwitcher(true)
+          setView('modelSwitcher')
           setIsProcessing(false)
           return
         }
@@ -237,7 +300,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         }
 
         if (result === '__WIZARD__') {
-          setShowWizard(true)
+          setView('setup')
           setIsProcessing(false)
           return
         }
@@ -283,38 +346,36 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         const streamingMsgId = `msg-${Date.now()}-stream`
         setMessages((prev) => [
           ...prev,
-          { id: streamingMsgId, type: 'system', content: 'Planning...', timestamp: new Date() },
+          { id: streamingMsgId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true },
         ])
 
-        let fullContent = ''
-        const stream = orch.queryStream(input)
+        await startStream(() => orch.queryStream(input))
 
-        for await (const token of stream) {
-          fullContent += token
+        if (streamingContent) {
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === streamingMsgId ? { ...m, content: fullContent, type: 'tool' as const } : m,
+              m.id === streamingMsgId
+                ? { ...m, content: streamingContent, role: 'assistant' as const, isStreaming: false }
+                : m,
             ),
           )
-        }
-
-        if (!fullContent) {
+          persistSessionMessage('assistant', streamingContent)
+        } else {
           const task = await orch.execute(input, (t: AgentTask) => {
             const completed = t.steps.filter(
               (s: { status: string }) => s.status === 'completed',
             ).length
             const total = t.steps.length
             const current = t.steps.find((s: { status: string }) => s.status === 'running')
-            setMessages((prev) => [
-              ...prev,
-              {
-                id: `msg-${Date.now()}-progress`,
-                type: 'progress',
-                content: `Step ${completed}/${total}${current ? ` - ${current.description}` : ''}`,
-                timestamp: new Date(),
-              },
-            ])
+            showProgress(
+              `Planning: ${input}`,
+              completed,
+              total,
+              current ? current.description : undefined,
+            )
           })
+
+          hideProgress()
 
           let output = `Task: ${task.status}\n`
           output += `Steps: ${task.steps.filter((s: { status: string }) => s.status === 'completed').length}/${task.steps.length} completed\n\n`
@@ -327,11 +388,12 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
 
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === streamingMsgId ? { ...m, content: output, type: 'tool' as const } : m,
+              m.id === streamingMsgId ? { ...m, content: output, role: 'tool' as const } : m,
             ),
           )
         }
       } catch (error) {
+        hideProgress()
         const msg = error instanceof Error ? error.message : String(error)
         addMessage('error', `Agent failed: ${msg}`)
         logger.error('Agent execution failed:', msg)
@@ -340,18 +402,31 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
       updateProviderStatus()
       setIsProcessing(false)
     },
-    [getOrchestrator, addMessage, updateProviderStatus],
+    [getOrchestrator, addMessage, updateProviderStatus, startStream, streamingContent, persistSessionMessage, showProgress, hideProgress],
   )
 
   const handleSubmit = useCallback(
     (value: string) => {
       const trimmed = value.trim()
-      if (!trimmed || isProcessing || showWizard || showModelSwitcher) return
+      if (!trimmed || isProcessing || view !== 'chat') return
       setInputKey((prev) => prev + 1)
       handleCommand(trimmed)
     },
-    [isProcessing, handleCommand, showWizard, showModelSwitcher],
+    [isProcessing, handleCommand, view],
   )
+
+  const commands = useMemo((): CommandDefinition[] => {
+    const registered = parser.getCommands()
+    return registered.map((cmd) => ({
+      id: cmd.name,
+      name: `/${cmd.name}`,
+      description: cmd.description,
+      execute: () => {
+        setShowCommandPalette(false)
+        handleCommand(`/${cmd.name}`)
+      },
+    }))
+  }, [parser, handleCommand])
 
   useInput(
     (input, key) => {
@@ -359,15 +434,30 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
         addMessage('system', 'Goodbye!')
         setTimeout(() => exit(), 500)
       }
+      if (input === 'k' && key.ctrl && view === 'chat') {
+        setShowCommandPalette((prev) => !prev)
+      }
+      if (input === 'g' && key.ctrl && view === 'chat') {
+        setShowSidePanel((prev) => !prev)
+      }
+      if (input === 'c' && key.ctrl && isStreaming) {
+        cancelStream()
+      }
     },
-    { isActive: !isProcessing && !showWizard && !showModelSwitcher },
+    { isActive: view === 'chat' },
   )
 
-  if (showWizard) {
+  const shortcuts = [
+    { key: 'Ctrl+K', action: 'commands' },
+    { key: 'Ctrl+G', action: 'panel' },
+    { key: 'Ctrl+Q', action: 'quit' },
+  ]
+
+  if (view === 'setup') {
     return (
       <SetupWizard
         onComplete={() => {
-          setShowWizard(false)
+          setView('chat')
           updateProviderStatus()
           addMessage(
             'system',
@@ -375,91 +465,136 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
           )
         }}
         onCancel={() => {
-          setShowWizard(false)
+          setView('chat')
           setIsProcessing(false)
         }}
       />
     )
   }
 
-  if (showModelSwitcher) {
+  if (view === 'modelSwitcher') {
     return (
       <ModelSwitcher
         onComplete={(model) => {
-          setShowModelSwitcher(false)
+          setView('chat')
           updateProviderStatus()
           addMessage('system', `Switched model to ${model}.`)
         }}
         onCancel={() => {
-          setShowModelSwitcher(false)
+          setView('chat')
           setIsProcessing(false)
         }}
       />
     )
   }
 
+  const sidePanelSections = [
+    {
+      title: 'Session',
+      items: [
+        { label: 'ID', value: sessionId },
+        { label: 'Provider', value: currentProvider },
+        { label: 'Model', value: currentModel },
+        { label: 'Messages', value: String(messages.length) },
+      ],
+    },
+    {
+      title: 'Shortcuts',
+      items: [
+        { label: 'Ctrl+K', value: 'Command Palette' },
+        { label: 'Ctrl+G', value: 'Toggle Panel' },
+        { label: 'Ctrl+Q', value: 'Quit' },
+        { label: 'Ctrl+C', value: 'Cancel Stream' },
+      ],
+    },
+  ]
+
+  const status = isStreaming ? 'streaming' : isProcessing ? 'loading' : 'idle'
+
   return (
     <Box flexDirection="column" height="100%">
-      <Box flexDirection="column" flexGrow={1} overflow="hidden">
-        {messages.map((msg) => (
-          <MessageComponent key={msg.id} message={msg} />
-        ))}
-      </Box>
+      <Header
+        title="Spectre"
+        subtitle="AI Development Intelligence Agent"
+        version="0.1.0"
+        provider={currentProvider}
+        model={currentModel}
+      />
 
-      <Box flexDirection="column" marginTop={1}>
-        <Box>
-          <Text color="cyan">{isProcessing ? '⏳ ' : '> '}</Text>
-          <TextInput
-            key={inputKey}
-            placeholder={isProcessing ? 'Processing...' : 'Enter command or question...'}
-            onSubmit={handleSubmit}
-            isDisabled={isProcessing}
+      <Box flexDirection="row" flexGrow={1} overflow="hidden">
+        <Box flexDirection="column" flexGrow={1} overflow="hidden">
+          <Box flexDirection="column" flexGrow={1} overflow="hidden">
+            {messages.map((msg) => (
+              <Box key={msg.id} flexDirection="column" paddingX={2} paddingY={msg.role === 'system' ? 0 : 1}>
+                {msg.role === 'user' && (
+                  <Text bold color={colors.primary}>You</Text>
+                )}
+                {msg.role === 'assistant' && (
+                  <Box>
+                    <Text bold color={colors.success}>AI</Text>
+                    {msg.isStreaming && <Text color={colors.warning}> ⠋</Text>}
+                  </Box>
+                )}
+                {msg.role === 'tool' && (
+                  <Text color={colors.text}>{msg.content}</Text>
+                )}
+                {msg.role === 'system' && (
+                  <Text color={colors.textMuted} dimColor>{msg.content}</Text>
+                )}
+                {msg.role === 'error' && (
+                  <Text color={colors.error}>✗ {msg.content}</Text>
+                )}
+              </Box>
+            ))}
+          </Box>
+
+          <ProgressIndicator
+            current={progress.current}
+            total={progress.total}
+            label={progress.label}
+            step={progress.step}
+            visible={progress.visible}
+          />
+
+          <Box
+            paddingX={2}
+            paddingY={1}
+            borderStyle="single"
+            borderColor={isStreaming ? colors.warning : colors.border}
+          >
+            <Text color={colors.highlight}>{'> '} </Text>
+            <TextInput
+              key={inputKey}
+              placeholder={isProcessing ? 'Processing...' : 'Enter command or question...'}
+              onSubmit={handleSubmit}
+              isDisabled={isProcessing}
+            />
+            {isStreaming && <Text color={colors.warning}> │ Ctrl+C to cancel</Text>}
+          </Box>
+        </Box>
+
+        <Box borderStyle="single" borderColor={colors.border} width={30}>
+          <SidePanel
+            title="Spectre"
+            sections={sidePanelSections}
+            visible={showSidePanel}
           />
         </Box>
-
-        <Box marginTop={1}>
-          <Text dimColor>[{currentProvider}]</Text>
-          <Text dimColor> | </Text>
-          <Text dimColor>{sessionId}</Text>
-          <Text dimColor> | </Text>
-          <Text dimColor>/setup configure</Text>
-          <Text dimColor> | </Text>
-          <Text dimColor>/model switch</Text>
-          <Text dimColor> | </Text>
-          <Text dimColor>/agent assign</Text>
-          <Text dimColor> | </Text>
-          <Text dimColor>Ctrl+Q to quit</Text>
-        </Box>
       </Box>
-    </Box>
-  )
-}
 
-const MessageComponent: React.FC<{ message: Message }> = ({ message }) => {
-  const colorMap: Record<Message['type'], string> = {
-    user: 'green',
-    system: 'cyan',
-    tool: 'white',
-    error: 'red',
-    welcome: 'yellow',
-    progress: 'gray',
-  }
+      <StatusBar
+        provider={currentProvider}
+        model={currentModel}
+        shortcuts={shortcuts}
+        status={status}
+      />
 
-  const prefixMap: Record<Message['type'], string> = {
-    user: '❯ ',
-    system: 'ℹ ',
-    tool: '',
-    error: '✗ ',
-    welcome: '',
-    progress: '  ',
-  }
-
-  return (
-    <Box flexDirection="column" marginTop={message.type === 'welcome' ? 0 : 1}>
-      <Text color={colorMap[message.type]}>
-        {prefixMap[message.type]}
-        {message.content}
-      </Text>
+      <CommandPalette
+        commands={commands}
+        onSelect={(cmd) => cmd.execute()}
+        onClose={() => setShowCommandPalette(false)}
+        visible={showCommandPalette}
+      />
     </Box>
   )
 }
@@ -470,28 +605,16 @@ interface SetupWizardProps {
 }
 
 const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
+  const colors = defaultTheme.colors
   const [step, setStep] = useState<WizardStep>('provider')
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const [selectedProvider, setSelectedProvider] = useState<(typeof PROVIDER_OPTIONS)[0] | null>(
-    null,
-  )
+  const [selectedProvider, setSelectedProvider] = useState<(typeof PROVIDER_OPTIONS)[0] | null>(null)
   const [apiKey, setApiKey] = useState('')
   const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434')
   const [models, setModels] = useState<ModelInfo[]>([])
   const [selectedModel, setSelectedModel] = useState('')
-  const [filter, setFilter] = useState('')
-  const [isFiltering, setIsFiltering] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [inputBuffer, setInputBuffer] = useState('')
-  const [spinnerFrame, setSpinnerFrame] = useState(0)
-
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setSpinnerFrame((prev) => (prev + 1) % 10)
-    }, 100)
-    return () => clearInterval(interval)
-  }, [])
 
   useInput(
     (input, key) => {
@@ -502,20 +625,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
 
       if (isLoading) return
 
-      if (step === 'provider') {
-        if (key.upArrow) setSelectedIndex((prev) => Math.max(0, prev - 1))
-        else if (key.downArrow)
-          setSelectedIndex((prev) => Math.min(PROVIDER_OPTIONS.length - 1, prev + 1))
-        else if (key.return) {
-          const provider = PROVIDER_OPTIONS[selectedIndex]
-          setSelectedProvider(provider)
-          if (provider.name === 'ollama') {
-            setStep('ollamaUrl')
-          } else {
-            setStep('apiKey')
-          }
-        }
-      } else if (step === 'apiKey') {
+      if (step === 'apiKey') {
         if (key.return && inputBuffer.trim()) {
           setApiKey(inputBuffer.trim())
           startModelDiscovery()
@@ -533,57 +643,12 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
         } else if (input.length === 1 && !key.ctrl && !key.meta) {
           setInputBuffer((prev) => prev + input)
         }
-      } else if (step === 'model') {
-        if (isFiltering) {
-          if (key.return) {
-            const filtered = getFilteredModels()
-            if (filtered.length > 0 && selectedIndex < filtered.length) {
-              setSelectedModel(filtered[selectedIndex].id)
-              completeSetup()
-            }
-          } else if (key.escape) {
-            setFilter('')
-            setIsFiltering(false)
-            setSelectedIndex(0)
-          } else if (key.backspace) {
-            setFilter((prev) => prev.slice(0, -1))
-            setSelectedIndex(0)
-          } else if (input.length === 1 && !key.ctrl && !key.meta) {
-            setFilter((prev) => prev + input)
-            setSelectedIndex(0)
-          }
-        } else {
-          const filtered = getFilteredModels()
-          if (key.upArrow) setSelectedIndex((prev) => Math.max(0, prev - 1))
-          else if (key.downArrow)
-            setSelectedIndex((prev) => Math.min(filtered.length - 1, prev + 1))
-          else if (key.return) {
-            if (filtered.length > 0 && selectedIndex < filtered.length) {
-              setSelectedModel(filtered[selectedIndex].id)
-              completeSetup()
-            }
-          } else if (key.tab || input === '/') {
-            setIsFiltering(true)
-            setFilter('')
-            setSelectedIndex(0)
-          } else if (input.length === 1 && !key.ctrl && !key.meta) {
-            setFilter(input)
-            setIsFiltering(true)
-            setSelectedIndex(0)
-          }
-        }
       } else if (step === 'complete') {
         if (key.return) onComplete()
       }
     },
-    { isActive: true },
+    { isActive: step !== 'provider' && step !== 'model' },
   )
-
-  const getFilteredModels = useCallback(() => {
-    if (!filter.trim()) return models
-    const lower = filter.toLowerCase()
-    return models.filter((m) => m.id.toLowerCase().includes(lower))
-  }, [models, filter])
 
   const startModelDiscovery = useCallback(async () => {
     if (!selectedProvider) return
@@ -614,7 +679,6 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
             ],
       )
       setStep('model')
-      setSelectedIndex(0)
     } catch (err) {
       setError(`Model discovery failed: ${err instanceof Error ? err.message : String(err)}`)
       setModels([
@@ -629,158 +693,174 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete, onCancel }) => {
     }
   }, [selectedProvider, apiKey, ollamaUrl])
 
-  const completeSetup = useCallback(() => {
-    if (!selectedProvider || !selectedModel) return
+  const completeSetup = useCallback(
+    (model: ModelInfo) => {
+      if (!selectedProvider) return
 
-    try {
-      const providerConfig: Provider = {
-        name: selectedProvider.name as Provider['name'],
-        apiKey: selectedProvider.requiresApiKey && apiKey ? encryptKey(apiKey) : undefined,
-        baseUrl: selectedProvider.name === 'ollama' ? ollamaUrl : undefined,
-        model: selectedModel,
-        isActive: true,
+      try {
+        const providerConfig: Provider = {
+          name: selectedProvider.name as Provider['name'],
+          apiKey: selectedProvider.requiresApiKey && apiKey ? encryptKey(apiKey) : undefined,
+          baseUrl: selectedProvider.name === 'ollama' ? ollamaUrl : undefined,
+          model: model.id,
+          isActive: true,
+        }
+
+        addProvider(providerConfig)
+        setActiveProvider(selectedProvider.name)
+        setSelectedModel(model.id)
+        setStep('complete')
+      } catch (err) {
+        setError(`Setup failed: ${err instanceof Error ? err.message : String(err)}`)
       }
+    },
+    [selectedProvider, apiKey, ollamaUrl],
+  )
 
-      addProvider(providerConfig)
-      setActiveProvider(selectedProvider.name)
-      setStep('complete')
-    } catch (err) {
-      setError(`Setup failed: ${err instanceof Error ? err.message : String(err)}`)
-    }
-  }, [selectedProvider, selectedModel, apiKey, ollamaUrl])
+  if (step === 'provider') {
+    return (
+      <Box flexDirection="column" paddingX={2} paddingY={1}>
+        <Box marginBottom={1}>
+          <Text bold color={colors.primary}>Setup Wizard</Text>
+          <Text color={colors.textMuted}> - Configure your AI provider</Text>
+        </Box>
 
-  const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        <SelectableList
+          items={PROVIDER_OPTIONS}
+          title="Select AI Provider"
+          maxVisible={10}
+          renderItem={(p, _i, isSelected) => (
+            <Box>
+              <Text color={isSelected ? colors.success : colors.textMuted}>
+                {isSelected ? '▸ ' : '  '}
+              </Text>
+              <Text bold color={isSelected ? colors.success : colors.text}>{p.label}</Text>
+              <Text color={colors.textMuted}>{p.requiresApiKey ? '' : ' (no API key needed)'}</Text>
+            </Box>
+          )}
+          onSelect={(p) => {
+            setSelectedProvider(p)
+            if (p.name === 'ollama') {
+              setStep('ollamaUrl')
+            } else {
+              setStep('apiKey')
+            }
+          }}
+          onCancel={onCancel}
+        />
+      </Box>
+    )
+  }
+
+  if (step === 'model') {
+    return (
+      <Box flexDirection="column" paddingX={2} paddingY={1}>
+        <Box marginBottom={1}>
+          <Text bold color={colors.primary}>Setup Wizard</Text>
+          <Text color={colors.textMuted}> - Select Model</Text>
+        </Box>
+
+        {isLoading && (
+          <Box marginBottom={1}>
+            <Spinner label="Discovering models..." visible />
+          </Box>
+        )}
+
+        {error && (
+          <Box marginBottom={1}>
+            <Text color={colors.error}>✗ {error}</Text>
+          </Box>
+        )}
+
+        {!isLoading && (
+          <SelectableList
+            items={models}
+            title={`Select Model (${models.length} available)`}
+            maxVisible={10}
+            renderItem={(m, _i, isSelected) => (
+              <Box>
+                <Text color={isSelected ? colors.success : colors.textMuted}>
+                  {isSelected ? '▸ ' : '  '}
+                </Text>
+                <Text color={isSelected ? colors.success : colors.text}>{m.id}</Text>
+              </Box>
+            )}
+            onSelect={completeSetup}
+            onCancel={onCancel}
+          />
+        )}
+      </Box>
+    )
+  }
+
+  if (step === 'complete') {
+    return (
+      <Box flexDirection="column" paddingX={2} paddingY={1}>
+        <Box marginBottom={1}>
+          <Text bold color={colors.primary}>Setup Wizard</Text>
+        </Box>
+
+        <Box flexDirection="column">
+          <Text bold color={colors.success}>Provider configured successfully!</Text>
+          <Box marginTop={1}>
+            <Text> Provider: </Text>
+            <Text bold color={colors.info}>{selectedProvider?.label}</Text>
+          </Box>
+          <Box>
+            <Text> Model: </Text>
+            <Text bold color={colors.info}>{selectedModel}</Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color={colors.info}>
+              Next: /model to switch models • /agent &lt;task&gt; to assign work • /help for commands
+            </Text>
+          </Box>
+          <Box marginTop={1}>
+            <Text color={colors.textMuted} dimColor>Press Enter to continue</Text>
+          </Box>
+        </Box>
+      </Box>
+    )
+  }
 
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       <Box marginBottom={1}>
-        <Text bold color="cyan">
-          Setup Wizard
-        </Text>
-        <Text color="gray"> - Configure your AI provider</Text>
+        <Text bold color={colors.primary}>Setup Wizard</Text>
+        <Text color={colors.textMuted}> - Configure your AI provider</Text>
       </Box>
 
       {error && (
         <Box marginBottom={1}>
-          <Text color="red">✗ {error}</Text>
+          <Text color={colors.error}>✗ {error}</Text>
         </Box>
       )}
 
-      {isLoading && (
-        <Box marginBottom={1}>
-          <Text color="yellow">{spinnerChars[spinnerFrame]} Discovering models...</Text>
-        </Box>
-      )}
-
-      {step === 'provider' && (
-        <Box flexDirection="column">
-          <Text bold>Select AI Provider:</Text>
-          {PROVIDER_OPTIONS.map((p, i) => (
-            <Box key={p.name}>
-              <Text color={i === selectedIndex ? 'green' : 'gray'}>
-                {i === selectedIndex ? '▸ ' : '  '}
-              </Text>
-              <Text bold color={i === selectedIndex ? 'green' : 'white'}>
-                {p.label}
-              </Text>
-              <Text color="gray">{p.requiresApiKey ? '' : ' (no API key needed)'}</Text>
-            </Box>
-          ))}
-          <Box marginTop={1}>
-            <Text dimColor>↑↓: navigate | Enter: select | Esc: cancel</Text>
-          </Box>
-        </Box>
-      )}
-
-      {(step === 'apiKey' || step === 'ollamaUrl') && (
-        <Box flexDirection="column">
-          <Text bold>
+      <Box flexDirection="column">
+        <Text bold>
+          {step === 'apiKey'
+            ? `Enter your ${selectedProvider?.label} API key:`
+            : 'Enter Ollama URL:'}
+        </Text>
+        <Box marginTop={1}>
+          <Text color={colors.highlight}>{'> '} </Text>
+          <Text>
             {step === 'apiKey'
-              ? `Enter your ${selectedProvider?.label} API key:`
-              : 'Enter Ollama URL:'}
+              ? '•'.repeat(inputBuffer.length)
+              : inputBuffer || 'http://localhost:11434'}
           </Text>
-          <Box marginTop={1}>
-            <Text color="green">{'> '}</Text>
-            <Text>
-              {step === 'apiKey'
-                ? '•'.repeat(inputBuffer.length)
-                : inputBuffer || 'http://localhost:11434'}
-            </Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>
-              {step === 'apiKey'
-                ? '(Your key is encrypted and stored locally)'
-                : '(default: http://localhost:11434)'}
-            </Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Enter: confirm | Esc: cancel</Text>
-          </Box>
         </Box>
-      )}
-
-      {step === 'model' && (
-        <Box flexDirection="column">
-          <Text bold>Select Model ({getFilteredModels().length} available):</Text>
-          {isFiltering && (
-            <Box>
-              <Text color="yellow">{'> '} </Text>
-              <Text bold>{filter}</Text>
-              <Text dimColor> │ Esc: clear filter</Text>
-            </Box>
-          )}
-          {getFilteredModels()
-            .slice(0, 10)
-            .map((m, i) => (
-              <Box key={m.id}>
-                <Text color={i === selectedIndex ? 'green' : 'gray'}>
-                  {i === selectedIndex ? '▸ ' : '  '}
-                </Text>
-                <Text color={i === selectedIndex ? 'green' : 'white'}>{m.id}</Text>
-              </Box>
-            ))}
-          {getFilteredModels().length > 10 && (
-            <Text dimColor> ... and {getFilteredModels().length - 10} more</Text>
-          )}
-          <Box marginTop={1}>
-            <Text dimColor>
-              {isFiltering
-                ? 'Enter: select | Esc: clear filter'
-                : '↑↓: navigate | Enter: select | Tab or /: filter | Esc: cancel'}
-            </Text>
-          </Box>
-        </Box>
-      )}
-
-      {step === 'complete' && (
-        <Box flexDirection="column">
-          <Text bold color="green">
-            Provider configured successfully!
+        <Box marginTop={1}>
+          <Text color={colors.textMuted} dimColor>
+            {step === 'apiKey'
+              ? '(Your key is encrypted and stored locally)'
+              : '(default: http://localhost:11434)'}
           </Text>
-          <Box marginTop={1}>
-            <Text> Provider: </Text>
-            <Text bold color="cyan">
-              {selectedProvider?.label}
-            </Text>
-          </Box>
-          <Box>
-            <Text> Model: </Text>
-            <Text bold color="cyan">
-              {selectedModel}
-            </Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text color="cyan">
-              Next: /model to switch models • /agent &lt;task&gt; to assign work • /help for
-              commands
-            </Text>
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Press Enter to continue</Text>
-          </Box>
         </Box>
-      )}
+        <Box marginTop={1}>
+          <Text color={colors.textMuted} dimColor>Enter: confirm | Esc: cancel</Text>
+        </Box>
+      </Box>
     </Box>
   )
 }
@@ -791,21 +871,11 @@ interface ModelSwitcherProps {
 }
 
 const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ onComplete, onCancel }) => {
+  const colors = defaultTheme.colors
   const active = getActiveProvider()
   const [models, setModels] = useState<ModelInfo[]>([])
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const [filter, setFilter] = useState('')
-  const [isFiltering, setIsFiltering] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [spinnerFrame, setSpinnerFrame] = useState(0)
-
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setSpinnerFrame((prev) => (prev + 1) % 10)
-    }, 100)
-    return () => clearInterval(interval)
-  }, [])
 
   React.useEffect(() => {
     let cancelled = false
@@ -842,123 +912,60 @@ const ModelSwitcher: React.FC<ModelSwitcherProps> = ({ onComplete, onCancel }) =
     }
   }, [active])
 
-  const getFilteredModels = useCallback(() => {
-    if (!filter.trim()) return models
-    const lower = filter.toLowerCase()
-    return models.filter((m) => m.id.toLowerCase().includes(lower))
-  }, [models, filter])
-
   const selectModel = useCallback(
-    (model: string) => {
+    (model: ModelInfo) => {
       if (!active) return
-      addProvider({ ...active, model, isActive: true })
+      addProvider({ ...active, model: model.id, isActive: true })
       setActiveProvider(active.name)
       clearProviderCache()
-      onComplete(model)
+      onComplete(model.id)
     },
     [active, onComplete],
   )
 
-  useInput(
-    (input, key) => {
-      if (key.escape) {
-        if (isFiltering) {
-          setFilter('')
-          setIsFiltering(false)
-          setSelectedIndex(0)
-        } else {
-          onCancel()
-        }
-        return
-      }
-
-      if (isLoading || error) return
-
-      const filtered = getFilteredModels()
-      if (key.return) {
-        const selected = filtered[selectedIndex]
-        if (selected) selectModel(selected.id)
-      } else if (key.upArrow) {
-        setSelectedIndex((prev) => Math.max(0, prev - 1))
-      } else if (key.downArrow) {
-        setSelectedIndex((prev) => Math.min(filtered.length - 1, prev + 1))
-      } else if (key.tab || input === '/') {
-        setIsFiltering(true)
-        setFilter('')
-        setSelectedIndex(0)
-      } else if (key.backspace && isFiltering) {
-        setFilter((prev) => prev.slice(0, -1))
-        setSelectedIndex(0)
-      } else if (input.length === 1 && !key.ctrl && !key.meta) {
-        setIsFiltering(true)
-        setFilter((prev) => (isFiltering ? prev + input : input))
-        setSelectedIndex(0)
-      }
-    },
-    { isActive: true },
-  )
-
-  const spinnerChars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-  const filtered = getFilteredModels()
-
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       <Box marginBottom={1}>
-        <Text bold color="cyan">
-          Model Switcher
-        </Text>
-        <Text color="gray"> - choose the active model</Text>
+        <Text bold color={colors.primary}>Model Switcher</Text>
+        <Text color={colors.textMuted}> - choose the active model</Text>
       </Box>
 
-      {!active && <Text color="red">No provider configured. Run /setup first.</Text>}
-      {error && <Text color="red">✗ {error}</Text>}
+      {!active && <Text color={colors.error}>No provider configured. Run /setup first.</Text>}
+      {error && <Text color={colors.error}>✗ {error}</Text>}
       {active && (
         <Box marginBottom={1}>
-          <Text dimColor>Provider: </Text>
-          <Text color="cyan" bold>
-            {active.name}
-          </Text>
-          <Text dimColor> • Current: </Text>
-          <Text color="cyan">{active.model}</Text>
+          <Text color={colors.textMuted}>Provider: </Text>
+          <Text color={colors.info} bold>{active.name}</Text>
+          <Text color={colors.textMuted}> • Current: </Text>
+          <Text color={colors.info}>{active.model}</Text>
         </Box>
       )}
 
       {isLoading ? (
-        <Text color="yellow">{spinnerChars[spinnerFrame]} Discovering models...</Text>
+        <Spinner label="Discovering models..." visible />
       ) : (
-        <Box flexDirection="column">
-          {isFiltering && (
-            <Box>
-              <Text color="yellow">{'> '} </Text>
-              <Text bold>{filter}</Text>
-              <Text dimColor> │ Esc: clear filter</Text>
-            </Box>
-          )}
-          {filtered.slice(0, 12).map((m, i) => {
-            const isSelected = i === selectedIndex
+        <SelectableList
+          items={models}
+          title={`Available Models (${models.length})`}
+          maxVisible={12}
+          renderItem={(m, _i, isSelected) => {
             const isActiveModel = active?.model === m.id
             return (
-              <Box key={m.id}>
-                <Text color={isSelected ? 'green' : 'gray'}>{isSelected ? '▸ ' : '  '}</Text>
-                <Text color={isSelected ? 'green' : 'white'} bold={isSelected}>
+              <Box>
+                <Text color={isSelected ? colors.success : colors.textMuted}>
+                  {isSelected ? '▸ ' : '  '}
+                </Text>
+                <Text color={isSelected ? colors.success : colors.text} bold={isSelected}>
                   {m.id}
                 </Text>
-                {isActiveModel && <Text color="cyan"> active</Text>}
+                {isActiveModel && <Text color={colors.info}> active</Text>}
               </Box>
             )
-          })}
-          {filtered.length > 12 && <Text dimColor> ... and {filtered.length - 12} more</Text>}
-          {filtered.length === 0 && <Text color="yellow">No models match your filter.</Text>}
-        </Box>
+          }}
+          onSelect={selectModel}
+          onCancel={onCancel}
+        />
       )}
-
-      <Box marginTop={1}>
-        <Text dimColor>
-          {isFiltering
-            ? 'Type to filter | Enter: select | Esc: clear'
-            : '↑↓: navigate | Enter: select | Tab or /: filter | Esc: cancel'}
-        </Text>
-      </Box>
     </Box>
   )
 }

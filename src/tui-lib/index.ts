@@ -12,6 +12,7 @@ export { TextInput } from './components/TextInput.js'
 
 export { useKeyboard } from './hooks/useKeyboard.js'
 export { useScroll } from './hooks/useScroll.js'
+export { useStreaming } from './hooks/useStreaming.js'
 
 export { fuzzyMatch, fuzzyFilter, highlightMatches } from './utils/fuzzy.js'
 export { highlightCode, detectLanguage } from './utils/syntax.js'

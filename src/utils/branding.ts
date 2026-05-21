@@ -1,19 +1,11 @@
 export const ASCII_ART = `
-           ╭──────────────────────────────╮
-           │          .-""""""-.          │
-           │        .'  .--.  '.          │
-           │       /   (o  o)   \\         │
-           │      |     \\__/     |        │
-           │       \\   .----.   /         │
-           │        '. '----' .'          │
-           │     _.-'  |    |  '-._       │
-           │   .'   _.-'    '-._   '.     │
-           │  /   .'          '.   \\      │
-           │ |   /   SPECTRE    \\   |     │
-           │  \\  \\              /  /      │
-           │   '. '.          .' .'       │
-           │     '-._'.____.'_.-'         │
-           ╰──────────────────────────────╯`
+███████╗██████╗ ███████╗ ██████╗████████╗██████╗ ███████╗
+██╔════╝██╔══██╗██╔════╝██╔════╝╚══██╔══╝██╔══██╗██╔════╝
+███████╗██████╔╝█████╗  ██║        ██║   ██████╔╝█████╗  
+╚════██║██╔═══╝ ██╔══╝  ██║        ██║   ██╔══██╗██╔══╝  
+███████║██║     ███████╗╚██████╗   ██║   ██║  ██║███████╗
+╚══════╝╚═╝     ╚══════╝ ╚═════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝
+`
 
 export const TOOL_NAME = 'SPECTRE'
 export const TAGLINE = 'AI Development Intelligence Agent'
@@ -22,11 +14,10 @@ export const CONTACT_EMAIL = 'sp@slashpan.com'
 export const GITHUB_URL = 'https://github.com/SlashpanOrg/spectre'
 
 export const WELCOME_MESSAGE = `${ASCII_ART}
-
-           ${TAGLINE}
-           ${'─'.repeat(TAGLINE.length)}
-           ${BUILT_BY}
-           ${CONTACT_EMAIL}  |  ${GITHUB_URL}
+${TAGLINE}
+${'─'.repeat(TAGLINE.length)}
+${BUILT_BY}
+${CONTACT_EMAIL}  |  ${GITHUB_URL}
 `
 
 export const HELP_MESSAGE = `Spectre commands:

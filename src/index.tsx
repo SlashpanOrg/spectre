@@ -19,8 +19,62 @@ import { agentCommand } from './commands/agent.js'
 import { newSessionCommand, resumeSessionCommand, sessionsCommand } from './commands/sessions.js'
 import { historyCommand, providersCommand, reposCommand } from './commands/info.js'
 import { SpectreApp } from './tui/app.js'
+import { createRequire } from 'module'
+
+const require = createRequire(import.meta.url)
+const pkg = require('../package.json')
+
+function showVersion(): void {
+  console.log(`spectre v${pkg.version}`)
+  console.log(`Built by Slashpan Technologies Private Limited`)
+  console.log(`https://github.com/SlashpanOrg/spectre`)
+}
+
+function showHelp(): void {
+  console.log(`
+Spectre v${pkg.version} - AI Development Intelligence Agent
+
+Usage:
+  spectre              Launch interactive TUI session
+  spectre --version    Show version information
+  spectre --help       Show this help message
+
+Commands (inside session):
+  /setup               Configure AI providers and API keys
+  /model               Switch AI model
+  /index               Index a Git repository
+  /query <question>    Ask about your codebase
+  /review [base]       Review current branch changes
+  /debt [branch]       Analyze technical debt
+  /docs <type>         Generate documentation
+  /agent <task>        Run multi-step agent task
+  /help                List all commands
+  /quit                Exit session
+
+Keyboard Shortcuts:
+  Ctrl+K               Command palette
+  Ctrl+G               Toggle side panel
+  Ctrl+C               Cancel streaming
+  Ctrl+Q               Quit
+
+Built by Slashpan Technologies Private Limited
+https://github.com/SlashpanOrg/spectre
+`)
+}
 
 function main(): void {
+  const args = process.argv.slice(2)
+
+  if (args.includes('--version') || args.includes('-v')) {
+    showVersion()
+    process.exit(0)
+  }
+
+  if (args.includes('--help') || args.includes('-h')) {
+    showHelp()
+    process.exit(0)
+  }
+
   const parser = new CommandParser()
 
   parser.register(helpCommand)
