@@ -9,19 +9,40 @@ if (!token) {
   process.exit(1)
 }
 
-const gateway = new TelegramGateway(token)
+let running = true
+let intentionalStop = false
 
 process.on('SIGTERM', () => {
-  gateway.stop()
+  intentionalStop = true
+  running = false
   process.exit(0)
 })
 
 process.on('SIGINT', () => {
-  gateway.stop()
+  intentionalStop = true
+  running = false
   process.exit(0)
 })
 
-gateway.start().catch((error) => {
-  logger.error('Gateway crashed:', error instanceof Error ? error.message : String(error))
-  process.exit(1)
+async function runGateway(): Promise<void> {
+  while (running) {
+    const gateway = new TelegramGateway(token!)
+
+    try {
+      await gateway.start()
+    } catch (error) {
+      if (!intentionalStop) {
+        logger.error('Gateway crashed:', error instanceof Error ? error.message : String(error))
+        logger.info('Restarting gateway in 5 seconds...')
+        await new Promise((resolve) => setTimeout(resolve, 5000))
+      }
+    }
+  }
+}
+
+runGateway().catch((error) => {
+  if (!intentionalStop) {
+    logger.error('Gateway process error:', error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
 })

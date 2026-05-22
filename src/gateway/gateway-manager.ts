@@ -6,6 +6,7 @@ import { spawn } from 'child_process'
 const STATE_DIR = join(process.env.HOME || '~', '.spectre', 'gateway')
 const PID_FILE = join(STATE_DIR, 'gateway.pid')
 const LOG_FILE = join(STATE_DIR, 'gateway.log')
+const TOKEN_FILE = join(STATE_DIR, 'gateway.token')
 
 export class GatewayManager {
   constructor() {
@@ -14,10 +15,22 @@ export class GatewayManager {
     }
   }
 
+  getStoredToken(): string | null {
+    if (!existsSync(TOKEN_FILE)) return null
+    const raw = readFileSync(TOKEN_FILE, 'utf-8').trim()
+    return raw || null
+  }
+
+  saveToken(token: string): void {
+    writeFileSync(TOKEN_FILE, token, { mode: 0o600 })
+  }
+
   startTelegram(token: string): string {
     if (this.isRunning()) {
       return 'Spectre gateway is already running.'
     }
+
+    this.saveToken(token)
 
     const gatewayScript = new URL('./index.js', import.meta.url)
     const child = spawn(process.execPath, [fileURLToPath(gatewayScript)], {
@@ -39,11 +52,28 @@ export class GatewayManager {
 
     try {
       process.kill(pid, 'SIGTERM')
-      writeFileSync(PID_FILE, '', { mode: 0o600 })
+      // Give process time to shut down before clearing pid
+      setTimeout(() => {
+        writeFileSync(PID_FILE, '', { mode: 0o600 })
+        writeFileSync(LOG_FILE, 'Gateway stopped.\n', { flag: 'a', mode: 0o600 })
+      }, 1000)
       return `Stopped Spectre gateway (PID ${pid}).`
     } catch (error) {
+      writeFileSync(PID_FILE, '', { mode: 0o600 })
       return `Failed to stop gateway: ${error instanceof Error ? error.message : String(error)}`
     }
+  }
+
+  config(newToken?: string): string {
+    if (newToken) {
+      this.saveToken(newToken)
+      return `Gateway token updated. Run /gateway start to start with the new token.`
+    }
+    const stored = this.getStoredToken()
+    if (stored) {
+      return `Gateway token is configured (${stored.substring(0, 8)}...). Run /gateway start to launch.`
+    }
+    return 'No gateway token configured. Run /gateway config <token> to set one.'
   }
 
   status(): string {
