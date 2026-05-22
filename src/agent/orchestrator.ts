@@ -328,6 +328,10 @@ After receiving tool results, continue with your response.`,
       lastMessage.content = finalResponse
     }
 
+    this.memoryManager.learnFromInteraction(userInput, finalResponse).catch((err) => {
+      logger.warn(`Failed to learn from interaction: ${err instanceof Error ? err.message : String(err)}`)
+    })
+
     return finalResponse
   }
 

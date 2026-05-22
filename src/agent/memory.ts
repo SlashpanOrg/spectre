@@ -263,4 +263,70 @@ Use this context to inform your responses. Be helpful, concise, and always respe
   clearCache(): void {
     this.cache = null
   }
+
+  async appendErrorEntry(error: string): Promise<void> {
+    const timestamp = new Date().toISOString()
+    const errorEntry = `\n## ERROR: ${timestamp}\n\`\`\`\n${error}\n\`\`\``
+    await this.append('diary', errorEntry)
+    logger.warn(`Memory: Error entry recorded`)
+  }
+
+  async appendPreference(key: string, value: string): Promise<void> {
+    const diary = await this.get('diary')
+    const prefSection = '## User Preferences'
+    const prefLine = `- ${key}: ${value}`
+
+    if (diary.includes(prefSection)) {
+      if (!diary.includes(`- ${key}:`)) {
+        const updatedDiary = diary.replace(prefSection, `${prefSection}\n${prefLine}`)
+        await this.update('diary', updatedDiary)
+      }
+    } else {
+      await this.append('diary', `\n${prefSection}\n${prefLine}`)
+    }
+  }
+
+  async learnFromInteraction(userInput: string, response: string): Promise<void> {
+    const requestPatterns = [
+      { pattern: /(?:always|never|please|prefer)\s+(\w+\s+\w+)/i, type: 'preference' },
+      { pattern: /(?:use|using|with)\s+(\w+)/i, type: 'tool' },
+      { pattern: /(?:language|framework|library|tool)\s+(\w+)/i, type: 'tech' },
+    ]
+
+    const lowerInput = userInput.toLowerCase()
+
+    for (const { pattern, type } of requestPatterns) {
+      const match = lowerInput.match(pattern)
+      if (match) {
+        const value = match[1].trim()
+        if (type === 'preference') {
+          await this.appendPreference('learned', value)
+        } else if (type === 'tech') {
+          const skill = `Knowledge of ${value}`
+          await this.addSkill(skill)
+          await this.updateInformation(`User uses ${value}`)
+        }
+      }
+    }
+
+    const responseSkillMatch = response.match(/(?:I (?:used|ran|executed|analyzed|found))\s+(.+)/i)
+    if (responseSkillMatch) {
+      const action = responseSkillMatch[1].trim().substring(0, 60)
+      await this.addSkill(`Performed: ${action}`)
+    }
+  }
+
+  async extractAndStoreUserFeedback(feedback: string): Promise<void> {
+    const patterns = [
+      /(?:prefer|like|love|hate|dislike)\s+(\w+(?:\s+\w+){0,3})/i,
+      /(?:don'?t|do not|never)\s+(\w+(?:\s+\w+){0,3})/i,
+    ]
+
+    for (const pattern of patterns) {
+      const match = feedback.match(pattern)
+      if (match) {
+        await this.appendPreference('user-said', match[0].trim())
+      }
+    }
+  }
 }
