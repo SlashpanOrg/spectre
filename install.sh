@@ -86,13 +86,16 @@ check_build_tools() {
 }
 
 create_install_dir() {
-  if [ -d "$INSTALL_DIR" ]; then
-    info "Cleaning up existing installation..."
-    rm -rf "$INSTALL_DIR"
-    success "Cleaned up existing installation"
+  local src_dir="$INSTALL_DIR/src"
+
+  if [ -d "$src_dir" ]; then
+    info "Updating existing installation in $src_dir..."
+    rm -rf "$src_dir"
+    success "Cleared source directory"
   fi
-  mkdir -p "$INSTALL_DIR"
-  success "Created install directory: $INSTALL_DIR"
+
+  mkdir -p "$src_dir"
+  success "Created source directory: $src_dir"
 }
 
 clone_repo() {
