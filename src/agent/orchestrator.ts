@@ -12,6 +12,7 @@ import { ClarificationHandler, ClarificationCallback } from './clarification-han
 import { modelProfileManager } from '../ai/model-profiles.js'
 import { markModelUnavailable } from '../ai/model-discovery.js'
 import { executeWithRetry } from './retry-handler.js'
+import { analyzeIntent } from './intent-analyzer.js'
 import { logger } from '../utils/logger.js'
 
 export interface ConversationMessage {
@@ -169,7 +170,34 @@ After receiving tool results, continue with your response.`,
     this.taskTimer.reset()
     this.taskTimer.start()
 
-    this.conversation.messages.push({ role: 'user', content: userInput })
+    const intentResult = analyzeIntent(userInput)
+
+    let enhancedInput = intentResult.enhancedPrompt
+    const fileContents: string[] = []
+
+    if (intentResult.entities.length > 0) {
+      const fileEntities = intentResult.entities.filter((e) => e.type === 'file')
+      for (const entity of fileEntities) {
+        try {
+          const result = await executeWithRetry(
+            `read:${entity.value}`,
+            () => this.toolRegistry.execute('read_file', { path: entity.value }),
+            { maxAttempts: 2 },
+          )
+          if (result.success) {
+            fileContents.push(`[FILE: ${entity.value}]\n\`\`\`\n${result.output}\n\`\`\``)
+          }
+        } catch {
+          logger.warn(`Could not auto-read file: ${entity.value}`)
+        }
+      }
+
+      if (fileContents.length > 0) {
+        enhancedInput = `${intentResult.enhancedPrompt}\n\n[CONTEXT FILES]\n${fileContents.join('\n\n')}`
+      }
+    }
+
+    this.conversation.messages.push({ role: 'user', content: enhancedInput })
     this.updateTokenUsage()
 
     if (this.compactor.shouldCompact(this.maxTokens)) {
@@ -311,7 +339,33 @@ After receiving tool results, continue with your response.`,
     this.taskTimer.reset()
     this.taskTimer.start()
 
-    this.conversation.messages.push({ role: 'user', content: userInput })
+    const intentResult = analyzeIntent(userInput)
+    let enhancedInput = intentResult.enhancedPrompt
+    const fileContents: string[] = []
+
+    if (intentResult.entities.length > 0) {
+      const fileEntities = intentResult.entities.filter((e) => e.type === 'file')
+      for (const entity of fileEntities) {
+        try {
+          const result = await executeWithRetry(
+            `read:${entity.value}`,
+            () => this.toolRegistry.execute('read_file', { path: entity.value }),
+            { maxAttempts: 2 },
+          )
+          if (result.success) {
+            fileContents.push(`[FILE: ${entity.value}]\n\`\`\`\n${result.output}\n\`\`\``)
+          }
+        } catch {
+          logger.warn(`Could not auto-read file: ${entity.value}`)
+        }
+      }
+
+      if (fileContents.length > 0) {
+        enhancedInput = `${intentResult.enhancedPrompt}\n\n[CONTEXT FILES]\n${fileContents.join('\n\n')}`
+      }
+    }
+
+    this.conversation.messages.push({ role: 'user', content: enhancedInput })
     this.updateTokenUsage()
 
     if (this.compactor.shouldCompact(this.maxTokens)) {
