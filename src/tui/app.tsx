@@ -97,6 +97,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     return session.id
   })
   const [isProcessing, setIsProcessing] = useState(false)
+  const [pendingConfirmKill, setPendingConfirmKill] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [showSidePanel, setShowSidePanel] = useState(false)
   const [currentProvider, setCurrentProvider] = useState(() => {
@@ -214,6 +215,7 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
       updateProviderStatus()
       setActiveTask(null)
       setIsProcessing(false)
+      setPendingConfirmKill(false)
     },
     [updateAgentStats, updateProviderStatus],
   )
@@ -449,6 +451,19 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
       if (input === 'q' && key.ctrl) {
         exitCleanly()
       }
+      if (key.escape && view === 'chat') {
+        if (isProcessing || isStreaming) {
+          if (pendingConfirmKill) {
+            cancelStream()
+            setPendingConfirmKill(false)
+            setTimeout(() => finishProcessing(orchestratorRef.current), 100)
+          } else {
+            setPendingConfirmKill(true)
+            setTimeout(() => setPendingConfirmKill(false), 5000)
+          }
+        }
+        return
+      }
       if (input === 'k' && key.ctrl && view === 'chat') {
         setShowCommandPalette((prev) => !prev)
       }
@@ -569,6 +584,14 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
             step={progress.step}
             visible={progress.visible}
           />
+
+          {pendingConfirmKill && (
+            <Box paddingX={2} paddingY={0}>
+              <Text color={colors.warning} bold>
+                ⚠ Press Escape again to cancel the current task
+              </Text>
+            </Box>
+          )}
 
           <Box
             paddingX={2}
