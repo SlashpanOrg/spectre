@@ -30,6 +30,7 @@ import { createSession, SessionStore } from '../session/session-store.js'
 import { logger } from '../utils/logger.js'
 import { TokenBar } from './components/token-bar.js'
 import { TaskTimerDisplay } from './components/task-timer.js'
+import { AutocompleteInput } from './components/autocomplete-input.js'
 
 function clearTerminal(): void {
   process.stdout.write('\x1b[2J\x1b[3J\x1b[H')
@@ -436,6 +437,13 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
     }))
   }, [parser, handleCommand])
 
+  const commandSuggestions = useMemo(() => {
+    return commands.map((cmd) => ({
+      label: cmd.name,
+      description: cmd.description,
+    }))
+  }, [commands])
+
   const latestUserId = useMemo(() => {
     return [...messages].reverse().find((msg) => msg.role === 'user')?.id
   }, [messages])
@@ -600,11 +608,12 @@ export const SpectreApp: React.FC<SpectreAppProps> = ({ parser }) => {
             borderColor={isStreaming ? colors.warning : colors.border}
           >
             <Text color={colors.highlight}>{'> '} </Text>
-            <TextInput
+            <AutocompleteInput
               key={inputKey}
               placeholder={isProcessing ? 'Processing...' : 'Enter command or question...'}
               onSubmit={handleSubmit}
               isDisabled={isProcessing || showCommandPalette}
+              suggestions={commandSuggestions}
             />
             {isStreaming && <Text color={colors.warning}> │ Ctrl+C to cancel</Text>}
           </Box>
