@@ -2,7 +2,7 @@ import { AgentOrchestrator } from '../agent/orchestrator.js'
 import { ToolRegistry } from '../agent/tools/registry.js'
 import { getProvider, clearProviderCache } from '../ai/config.js'
 import { logger } from '../utils/logger.js'
-import { existsSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 interface TelegramUpdate {
@@ -25,12 +25,32 @@ export class TelegramGateway {
   private offset = 0
   private stateDir: string
   private initFlagFile: string
+  private offsetFile: string
+  private lockFile: string
   private firstUserInteraction = true
 
   constructor(token: string) {
     this.token = token
     this.stateDir = join(process.env.HOME || '~', '.spectre', 'gateway')
     this.initFlagFile = join(this.stateDir, 'gateway_initialized')
+    this.offsetFile = join(this.stateDir, 'gateway.offset')
+    this.lockFile = join(this.stateDir, 'gateway.lock')
+    this.offset = this.loadOffset()
+  }
+
+  private loadOffset(): number {
+    if (!existsSync(this.offsetFile)) return 0
+    try {
+      const raw = readFileSync(this.offsetFile, 'utf-8').trim()
+      const parsed = Number(raw)
+      return Number.isInteger(parsed) ? parsed : 0
+    } catch {
+      return 0
+    }
+  }
+
+  private saveOffset(): void {
+    writeFileSync(this.offsetFile, String(this.offset), { mode: 0o600 })
   }
 
   private isFirstConnection(): boolean {
@@ -42,6 +62,18 @@ export class TelegramGateway {
   }
 
   async start(): Promise<void> {
+    // Prevent duplicate gateway instance
+    if (existsSync(this.lockFile)) {
+      const existingPid = readFileSync(this.lockFile, 'utf-8').trim()
+      const gatewayPid = process.env.SPECTRE_GATEWAY_PID_FILE
+      const expectedPid = gatewayPid ? readFileSync(gatewayPid, 'utf-8').trim() : ''
+      if (existingPid && existingPid !== expectedPid) {
+        logger.warn(`Duplicate gateway instance detected (lock held by PID ${existingPid}), shutting down.`)
+        return
+      }
+    }
+    writeFileSync(this.lockFile, String(process.pid), { mode: 0o600 })
+
     const isFirstTime = this.isFirstConnection()
     if (isFirstTime) {
       logger.info('Telegram gateway connected for the first time')
@@ -59,6 +91,7 @@ export class TelegramGateway {
         const updates = await this.getUpdates()
         for (const update of updates) {
           this.offset = update.update_id + 1
+          this.saveOffset()
           await this.handleUpdate(update)
         }
       } catch (error) {
@@ -70,6 +103,16 @@ export class TelegramGateway {
 
   stop(): void {
     this.running = false
+    if (existsSync(this.lockFile)) {
+      try {
+        const lockPid = readFileSync(this.lockFile, 'utf-8').trim()
+        if (lockPid === String(process.pid)) {
+          writeFileSync(this.lockFile, '', { mode: 0o600 })
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   }
 
   private async getUpdates(): Promise<TelegramUpdate[]> {

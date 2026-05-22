@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { spawn } from 'child_process'
 
 const STATE_DIR = join(process.env.HOME || '~', '.spectre', 'gateway')
 const PID_FILE = join(STATE_DIR, 'gateway.pid')
+const LOCK_FILE = join(STATE_DIR, 'gateway.lock')
 const LOG_FILE = join(STATE_DIR, 'gateway.log')
 const TOKEN_FILE = join(STATE_DIR, 'gateway.token')
 
@@ -30,13 +31,18 @@ export class GatewayManager {
       return 'Spectre gateway is already running.'
     }
 
+    // Clean any stale lock file from previous run
+    if (existsSync(LOCK_FILE)) {
+      unlinkSync(LOCK_FILE)
+    }
+
     this.saveToken(token)
 
     const gatewayScript = new URL('./index.js', import.meta.url)
     const child = spawn(process.execPath, [fileURLToPath(gatewayScript)], {
       detached: true,
       stdio: ['ignore', 'ignore', 'ignore'],
-      env: { ...process.env, SPECTRE_TELEGRAM_BOT_TOKEN: token, SPECTRE_GATEWAY_LOG: LOG_FILE },
+      env: { ...process.env, SPECTRE_TELEGRAM_BOT_TOKEN: token, SPECTRE_GATEWAY_LOG: LOG_FILE, SPECTRE_GATEWAY_PID_FILE: PID_FILE },
     })
 
     child.unref()
@@ -52,14 +58,16 @@ export class GatewayManager {
 
     try {
       process.kill(pid, 'SIGTERM')
-      // Give process time to shut down before clearing pid
+      // Clean up PID and lock files after a brief delay
       setTimeout(() => {
         writeFileSync(PID_FILE, '', { mode: 0o600 })
+        if (existsSync(LOCK_FILE)) unlinkSync(LOCK_FILE)
         writeFileSync(LOG_FILE, 'Gateway stopped.\n', { flag: 'a', mode: 0o600 })
       }, 1000)
       return `Stopped Spectre gateway (PID ${pid}).`
     } catch (error) {
       writeFileSync(PID_FILE, '', { mode: 0o600 })
+      if (existsSync(LOCK_FILE)) unlinkSync(LOCK_FILE)
       return `Failed to stop gateway: ${error instanceof Error ? error.message : String(error)}`
     }
   }
